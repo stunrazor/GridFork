@@ -7,6 +7,7 @@ the scores and ranking are always identical.
 import json
 from pathlib import Path
 
+import spark_client
 from agents import air, rail, road, sea
 
 DATA_PATH = Path(__file__).resolve().parent / "data" / "synthetic_north_sea_storm.json"
@@ -105,3 +106,15 @@ def run_demo() -> dict:
         "findings": findings,
         "ranked_options": score_options(options),
     }
+
+
+def run_demo_with_summary() -> dict:
+    """Demo plus a narrative summary; falls back deterministically offline.
+
+    The ranking itself is always the deterministic result. Only the attached
+    ``summary`` dict may come from Muse Spark when ``META_MODEL_API_KEY`` is
+    set and the API call succeeds.
+    """
+    demo = run_demo()
+    demo["summary"] = spark_client.generate_summary(demo["ranked_options"])
+    return demo
