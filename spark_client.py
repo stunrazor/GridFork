@@ -29,15 +29,18 @@ API_KEY_ENV_VAR = "META_MODEL_API_KEY"
 def build_summary_prompt(ranked_options: list[dict]) -> str:
     """Build a deterministic prompt describing the ranked reroute options."""
     lines = [
-        "Summarize this North Sea storm freight reroute ranking in two sentences.",
-        "State the top option and one key tradeoff. Synthetic demo data:",
+        "Summarize this North Sea storm freight reroute ranking in three sentences.",
+        "State the top option, one key tradeoff vs the runner-up, and confidence.",
+        "Synthetic demo data:",
     ]
     for option in ranked_options:
         lines.append(
             f"Rank {option['rank']}: {option['option_id']} "
             f"({option['title']}), score {option['score']}, "
             f"cost ${option['cost_usd']}, "
-            f"saves {option['time_saved_hours']}h."
+            f"saves {option['time_saved_hours']}h, "
+            f"on-time {option['on_time_probability']}, "
+            f"confidence {option['confidence']}."
         )
     return "\n".join(lines)
 
@@ -46,9 +49,16 @@ def deterministic_summary(ranked_options: list[dict]) -> str:
     """Deterministic fallback summary used when Muse Spark is unavailable."""
     top = ranked_options[0]
     order = ", ".join(o["option_id"] for o in ranked_options)
+    runner_up = ranked_options[1]
+    cost_gap = runner_up["cost_usd"] - top["cost_usd"]
+    time_gap = top["time_saved_hours"] - runner_up["time_saved_hours"]
+    cost_word = f"saves ${cost_gap}" if cost_gap >= 0 else f"costs ${-cost_gap} more"
+    time_word = f"saves {time_gap}h more" if time_gap >= 0 else f"saves {-time_gap}h less"
     return (
         f"Top recommendation is {top['option_id']} ({top['title']}) "
-        f"with score {top['score']}. Full ranking: {order}."
+        f"with score {top['score']}. "
+        f"Tradeoff vs {runner_up['option_id']}: top pick {cost_word} and {time_word}. "
+        f"Full ranking: {order}."
     )
 
 

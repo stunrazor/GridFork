@@ -37,6 +37,19 @@ def test_deterministic_summary_names_top_option():
     assert "rail-reroute" in text
 
 
+def test_deterministic_summary_states_runner_up_tradeoff():
+    text = spark_client.deterministic_summary(_ranked())
+    assert "Tradeoff vs road-reroute" in text
+    assert "saves $700" in text
+    assert "saves 4h more" in text
+
+
+def test_prompt_carries_all_ranking_axes():
+    prompt = spark_client.build_summary_prompt(_ranked())
+    assert "on-time 0.7" in prompt
+    assert "confidence 0.72" in prompt
+
+
 def test_fetch_uses_documented_endpoint_model_and_format(monkeypatch):
     captured = {}
 

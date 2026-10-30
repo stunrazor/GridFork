@@ -7,6 +7,7 @@ the scores and ranking are always identical.
 import json
 from pathlib import Path
 
+import sam_client
 import spark_client
 from agents import air, rail, road, sea
 
@@ -117,4 +118,57 @@ def run_demo_with_summary() -> dict:
     """
     demo = run_demo()
     demo["summary"] = spark_client.generate_summary(demo["ranked_options"])
+    return demo
+
+
+# SAM visual ground truth for the sea leg. The default image is reference
+# imagery (dense container stacks), not a live Rotterdam feed: the vision
+# score corroborates port congestion for the demo narrative.
+VISION_CONCEPT = "container"
+VISION_DEFAULT_IMAGE_URL = (
+    "https://unctad.org/sites/default/files/2023-03/"
+    "20230322_NewsPic_PeruStory_shutterstock_2056090226_1200%20x%20675.jpg"
+)
+VISION_MAX_ADDED_DELAY_HOURS = 12
+
+
+def run_demo_with_vision(image_url: str = VISION_DEFAULT_IMAGE_URL) -> dict:
+    """Demo plus SAM visual ground truth blended into the sea leg.
+
+    Blend rule: a live SAM result adds ``round(score * 12)`` delay hours to
+    the sea finding before options are rebuilt and rescored, so the
+    ``sea-wait`` numbers visibly move. Without a key, or when the API call
+    fails, the ranking is identical to :func:`run_demo` and the ``vision``
+    block reports ``source: "unavailable"``.
+    """
+    demo = run_demo()
+    url = (image_url or "").strip() or VISION_DEFAULT_IMAGE_URL
+    result = sam_client.segment_image(VISION_CONCEPT, url)
+    detections = len(result["detections"])
+    score = sam_client.congestion_score_from_counts({VISION_CONCEPT: detections})
+    vision = {
+        "source": result["source"],
+        "concept": VISION_CONCEPT,
+        "image_url": url,
+        "reference_imagery": True,
+        "detections": detections,
+        "score": score,
+        "sea_delay_added_hours": 0,
+    }
+    if result["source"] == "sam-3.1":
+        added = round(score * VISION_MAX_ADDED_DELAY_HOURS)
+        vision["sea_delay_added_hours"] = added
+        scenario = load_scenario()
+        findings = collect_findings(scenario)
+        for finding in findings:
+            if finding["mode"] == "sea":
+                finding["delay_hours"] += added
+                finding["vision_adjustment"] = (
+                    f"+{added}h port congestion from SAM "
+                    f"({detections} detections, score {score})"
+                )
+        options = build_options(findings, scenario["baseline"]["storm_delay_hours_if_waiting"])
+        demo["findings"] = findings
+        demo["ranked_options"] = score_options(options)
+    demo["vision"] = vision
     return demo
