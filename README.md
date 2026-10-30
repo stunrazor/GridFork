@@ -53,11 +53,15 @@ endpoint still works on deterministic fallbacks. Tests run offline:
 - Scenario data is synthetic and labeled as such throughout.
 - Vision uses reference imagery, not a live Rotterdam feed.
 - The optional Meta Models grid section needs `META_MODEL_API_KEY` for
-  Wonder/Image (paid calls, run on demand only) and a local runner for
-  open weights: set `SPARK_OPEN_BASE_URL` / `GLIMMER_BASE_URL` to a
-  running OpenAI-compatible server (see `openweights_client.py` for the
-  verified checkpoints, runners, and hardware notes). No weights are
-  downloaded and no runner is started by this repo.
+  Wonder/Image (paid calls, run on demand only) and a runner for open
+  weights. Glimmer: install Ollama, run `ollama run muse-glimmer`
+  (~17 GB download), set `GLIMMER_BASE_URL=http://localhost:11434/v1`.
+  Spark Open needs a hosted provider: set `SPARK_OPEN_BASE_URL` to its
+  OpenAI-compatible endpoint plus `SPARK_OPEN_API_KEY`, and
+  `SPARK_OPEN_MODEL` if the provider's model slug differs (same
+  `GLIMMER_MODEL_NAME` override exists). See `openweights_client.py`
+  for the verified checkpoints, runners, and hardware notes. No weights
+  are downloaded and no runner is started by this repo.
 
 ## Demo video
 

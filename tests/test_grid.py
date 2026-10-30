@@ -15,6 +15,7 @@ def test_page_calls_the_json_endpoints():
         "/demo/north-sea-storm/brief",
         "/demo/north-sea-storm/image",
         "/demo/north-sea-storm/openweights",
+        "/demo/north-sea-storm/openweights/ask",
     ):
         assert path in html
 
@@ -35,6 +36,8 @@ def test_page_has_optional_meta_models_section():
     assert "Separate from SAM" in html
     assert "Check Spark Open runner" in html
     assert "Check Glimmer runner" in html
+    assert "Classify with Spark Open" in html
+    assert "Classify with Glimmer" in html
     assert "Nothing here runs on page load" in html
 
 
@@ -44,7 +47,8 @@ def test_meta_models_section_makes_no_onload_calls():
     for path in (
         "/demo/north-sea-storm/brief",
         "/demo/north-sea-storm/image",
-        "/demo/north-sea-storm/openweights",
+        "/demo/north-sea-storm/openweights?model=",
+        "/demo/north-sea-storm/openweights/ask?model=",
     ):
         assert script.count(path) == 1
 

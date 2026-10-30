@@ -85,6 +85,10 @@ These buttons only check runner setup; they start nothing.</p>
 <button id="ow-glimmer-btn" type="button">Check Glimmer runner</button>
 <p id="ow-spark" class="note">Not checked yet.</p>
 <p id="ow-glimmer" class="note">Not checked yet.</p>
+<button id="ow-ask-spark-btn" type="button">Classify with Spark Open</button>
+<button id="ow-ask-glimmer-btn" type="button">Classify with Glimmer</button>
+<p id="ow-ask-spark" class="note">Not run yet.</p>
+<p id="ow-ask-glimmer" class="note">Not run yet.</p>
 
 <footer>
 <p>Sources: deterministic scoring (always) &middot; Muse Spark summary
@@ -191,6 +195,19 @@ document.getElementById("ow-spark-btn").addEventListener("click",
   () => checkRunner("spark-open", "ow-spark"));
 document.getElementById("ow-glimmer-btn").addEventListener("click",
   () => checkRunner("glimmer", "ow-glimmer"));
+async function askRunner(model, elId) {
+  const el = document.getElementById(elId);
+  el.textContent = "Asking\u2026 local inference can take minutes.";
+  try {
+    const demo = await getJSON("/demo/north-sea-storm/openweights/ask?model=" + model);
+    const o = demo.openweights;
+    el.textContent = "[" + o.source + "] " + (o.text || o.detail);
+  } catch (e) { el.textContent = String(e); }
+}
+document.getElementById("ow-ask-spark-btn").addEventListener("click",
+  () => askRunner("spark-open", "ow-ask-spark"));
+document.getElementById("ow-ask-glimmer-btn").addEventListener("click",
+  () => askRunner("glimmer", "ow-ask-glimmer"));
 loadDemo().catch(e => { document.getElementById("modes").textContent = String(e); });
 loadSummary();
 loadWeather();

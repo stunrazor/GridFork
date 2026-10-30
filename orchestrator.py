@@ -8,6 +8,7 @@ import json
 from pathlib import Path
 
 import image_client
+import openweights_client
 import sam_client
 import spark_client
 import wonder_client
@@ -202,4 +203,18 @@ def run_demo_with_image() -> dict:
     demo["image"] = image_client.generate_scenario_image(
         scenario["label"], sea["wave_height_m"], sea["wind_kph"]
     )
+    return demo
+
+
+def run_demo_with_openweights(model_key: str = "spark-open") -> dict:
+    """Demo plus an open-weight severity classification; setup-safe offline.
+
+    The ranking itself is always the deterministic result. The attached
+    ``openweights`` dict carries model text only when a runner is
+    configured and answers; otherwise it reports ``setup-required`` or
+    ``unreachable`` with no network call beyond the single attempt.
+    """
+    demo = run_demo()
+    prompt = openweights_client.build_severity_prompt(demo["findings"])
+    demo["openweights"] = openweights_client.generate_text(model_key, prompt)
     return demo

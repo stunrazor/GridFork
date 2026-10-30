@@ -9,6 +9,7 @@ from orchestrator import (
     run_demo,
     run_demo_with_brief,
     run_demo_with_image,
+    run_demo_with_openweights,
     run_demo_with_summary,
     run_demo_with_vision,
 )
@@ -54,6 +55,11 @@ def north_sea_storm_image():
 @app.get("/demo/north-sea-storm/openweights")
 def north_sea_storm_openweights(model: str = "spark-open"):
     return openweights_client.runner_status(model)
+
+
+@app.get("/demo/north-sea-storm/openweights/ask")
+def north_sea_storm_openweights_ask(model: str = "spark-open"):
+    return run_demo_with_openweights(model)
 
 
 @app.get("/demo/grid", response_class=HTMLResponse)
