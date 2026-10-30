@@ -2,7 +2,8 @@
 
 Plain server-rendered shell plus small fetches to the JSON endpoints. Works
 offline (every endpoint falls back deterministically); the SAM verification
-block runs on demand so a page load never triggers a live vision call.
+block and the Meta Models section run on demand so a page load never
+triggers a live vision, Wonder, Image, or runner call.
 """
 
 
@@ -35,6 +36,8 @@ def render_grid_page() -> str:
   th { background: #eee; }
   tr.top td { font-weight: bold; }
   button { font-size: 0.9rem; padding: 0.4rem 0.9rem; cursor: pointer; }
+  h3 { font-size: 0.95rem; margin: 1.25rem 0 0.25rem; }
+  img.illus { max-width: 100%; border: 1px solid #ccc; margin-top: 0.5rem; }
   .note { font-size: 0.85rem; color: #444; }
   .src { font-size: 0.8rem; color: #444; }
   footer { margin-top: 2rem; font-size: 0.8rem; color: #444;
@@ -63,12 +66,36 @@ def render_grid_page() -> str:
 <h2>Live wind layer</h2>
 <p id="weather" class="note">Loading&hellip;</p>
 
+<h2>Meta Models (optional)</h2>
+<p class="note">On-demand extras. Nothing here runs on page load. Wonder and
+Image are paid Meta API calls; open weights need a local runner.</p>
+<h3>Muse Wonder &mdash; decision explanation</h3>
+<p class="note">Grounded in the current findings and ranking.</p>
+<button id="brief-btn" type="button">Explain this scenario</button>
+<p id="brief" class="note">Not run yet.</p>
+<h3>Muse Image &mdash; illustration</h3>
+<p class="note">AI-generated port/storm illustration. Separate from SAM
+segmentation, which measures real imagery.</p>
+<button id="image-btn" type="button">Generate port image</button>
+<div id="illustration" class="note">Not run yet.</div>
+<h3>Open weights &mdash; runner setup</h3>
+<p class="note">Muse Spark Open and Muse Glimmer run on your own hardware.
+These buttons only check runner setup; they start nothing.</p>
+<button id="ow-spark-btn" type="button">Check Spark Open runner</button>
+<button id="ow-glimmer-btn" type="button">Check Glimmer runner</button>
+<p id="ow-spark" class="note">Not checked yet.</p>
+<p id="ow-glimmer" class="note">Not checked yet.</p>
+
 <footer>
 <p>Sources: deterministic scoring (always) &middot; Muse Spark summary
 (<code>source: muse-spark</code> live, <code>deterministic</code> offline) &middot;
 SAM 3.1 segmentation (<code>source: sam-3.1</code> live,
 <code>unavailable</code> offline) &middot; Open-Meteo wind
-(<code>live: true</code>) or labeled synthetic fallback.</p>
+(<code>live: true</code>) or labeled synthetic fallback &middot; Muse Wonder
+brief (<code>muse-wonder</code> live, <code>deterministic</code> offline)
+&middot; Muse Image illustration (<code>muse-image</code> live,
+<code>unavailable</code> offline) &middot; open weights
+(<code>setup-required</code> until a runner is configured).</p>
 </footer>
 
 <script>
@@ -124,6 +151,46 @@ document.getElementById("vision-btn").addEventListener("click", async () => {
       sea.time_saved_hours + "h at score " + sea.score + ".";
   } catch (e) { el.textContent = String(e); }
 });
+document.getElementById("brief-btn").addEventListener("click", async () => {
+  const el = document.getElementById("brief");
+  el.textContent = "Asking Muse Wonder\u2026";
+  try {
+    const demo = await getJSON("/demo/north-sea-storm/brief");
+    el.textContent = "[" + demo.brief.source + "] " + demo.brief.text;
+  } catch (e) { el.textContent = String(e); }
+});
+document.getElementById("image-btn").addEventListener("click", async () => {
+  const el = document.getElementById("illustration");
+  el.textContent = "Generating illustration\u2026";
+  try {
+    const demo = await getJSON("/demo/north-sea-storm/image");
+    const img = demo.image;
+    if (img.data_url) {
+      el.textContent = "[" + img.source + "] " + img.note + " ";
+      const tag = document.createElement("img");
+      tag.src = img.data_url;
+      tag.alt = "AI-generated port illustration";
+      tag.className = "illus";
+      el.appendChild(tag);
+    } else {
+      el.textContent = "[" + img.source + "] " + img.note;
+    }
+  } catch (e) { el.textContent = String(e); }
+});
+async function checkRunner(model, elId) {
+  const el = document.getElementById(elId);
+  el.textContent = "Checking runner\u2026";
+  try {
+    const s = await getJSON("/demo/north-sea-storm/openweights?model=" + model);
+    el.textContent = "[" + s.source + "] " + s.label + " (" + s.repo + "). " +
+      s.detail + (s.served_models.length ?
+        " Served: " + s.served_models.join(", ") + "." : "");
+  } catch (e) { el.textContent = String(e); }
+}
+document.getElementById("ow-spark-btn").addEventListener("click",
+  () => checkRunner("spark-open", "ow-spark"));
+document.getElementById("ow-glimmer-btn").addEventListener("click",
+  () => checkRunner("glimmer", "ow-glimmer"));
 loadDemo().catch(e => { document.getElementById("modes").textContent = String(e); });
 loadSummary();
 loadWeather();

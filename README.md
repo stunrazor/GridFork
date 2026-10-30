@@ -29,6 +29,9 @@ quantified reroutes on Cost, Time Saved, On-Time Probability, and Confidence.
 - `GET /demo/north-sea-storm/summary` — plus Spark narrative rationale
 - `GET /demo/north-sea-storm/vision` — plus SAM ground truth (`?image_url=`)
 - `GET /demo/north-sea-storm/weather` — live wind or labeled fallback
+- `GET /demo/north-sea-storm/brief` — plus Muse Wonder decision explanation
+- `GET /demo/north-sea-storm/image` — plus Muse Image illustration
+- `GET /demo/north-sea-storm/openweights?model=` — Spark Open / Glimmer runner setup status (`spark-open`, `glimmer`)
 
 ## Run it
 
@@ -49,9 +52,12 @@ endpoint still works on deterministic fallbacks. Tests run offline:
 
 - Scenario data is synthetic and labeled as such throughout.
 - Vision uses reference imagery, not a live Rotterdam feed.
-- Muse Wonder, Muse Image, and Meta Open Weights were explicitly cut from
-  hackathon scope: depth of the agent ranking and visual verification
-  matters more than surface coverage.
+- The optional Meta Models grid section needs `META_MODEL_API_KEY` for
+  Wonder/Image (paid calls, run on demand only) and a local runner for
+  open weights: set `SPARK_OPEN_BASE_URL` / `GLIMMER_BASE_URL` to a
+  running OpenAI-compatible server (see `openweights_client.py` for the
+  verified checkpoints, runners, and hardware notes). No weights are
+  downloaded and no runner is started by this repo.
 
 ## Demo video
 
