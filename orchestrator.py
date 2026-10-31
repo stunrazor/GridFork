@@ -9,6 +9,8 @@ import json
 from pathlib import Path
 
 import image_client
+import live_marine
+import live_weather
 import openweights_client
 import sam_client
 import spark_client
@@ -495,4 +497,92 @@ def run_challenge(
         "cases": cases,
         "results": results,
         "summary": summary,
+    }
+
+
+# Phase 1 live data: measured sea conditions drive the sea slice through
+# this explicit rule, aligned with the sea agent's own thresholds
+# (disrupted at 8m/100kph, degraded from 12h delay). Costs, on-time
+# probabilities, and confidences stay synthetic estimates — no free
+# real-time source exists — and provenance says so per field.
+def _sea_conditions_to_delay(
+    wave_height_m: float, wind_kph: float
+) -> tuple[int, str]:
+    """Map measured conditions to (delay_hours, port_status)."""
+    if wave_height_m >= 8 or wind_kph >= 100:
+        return 48, "Rotterdam departures restricted"
+    if wave_height_m >= 4 or wind_kph >= 60:
+        return 12, "Rotterdam departures advisory"
+    return 2, "Rotterdam departures normal"
+
+
+def build_live_scenario() -> tuple[dict, dict, dict, dict]:
+    """Build a scenario with live sea conditions, plus provenance and readouts.
+
+    Wave height and wind come from Open-Meteo (or labeled fallbacks); the
+    sea delay and port status are estimated from them by rule; everything
+    else keeps its synthetic value. Provenance values: "measured",
+    "estimated-from-conditions", "synthetic", "synthetic-fallback".
+    Returns (scenario, provenance, marine_readout, wind_readout).
+    """
+    scenario = load_scenario()
+    marine = live_marine.fetch_north_sea_waves()
+    wind = live_weather.fetch_rotterdam_wind()
+    wave_prov = "measured" if marine["live"] else "synthetic-fallback"
+    wind_prov = "measured" if wind["live"] else "synthetic-fallback"
+    if marine["live"] or wind["live"]:
+        wave = marine["wave_height_m"]
+        wind_kph = wind["wind_kph"]
+        delay_hours, port_status = _sea_conditions_to_delay(wave, wind_kph)
+        sea_slice = scenario["modes"]["sea"]
+        sea_slice["wave_height_m"] = wave
+        sea_slice["wind_kph"] = wind_kph
+        sea_slice["delay_hours"] = delay_hours
+        sea_slice["port_status"] = port_status
+        delay_prov = "estimated-from-conditions"
+    else:
+        # Fully offline: leave the synthetic slice byte-identical so the
+        # snapshot equals the baseline demo exactly.
+        delay_prov = "synthetic-fallback"
+    provenance = {
+        "sea": {
+            "wave_height_m": wave_prov,
+            "wind_kph": wind_prov,
+            "delay_hours": delay_prov,
+            "port_status": delay_prov,
+            "cost_usd": "synthetic-estimate",
+            "on_time_probability": "synthetic-estimate",
+            "confidence": "synthetic-estimate",
+        },
+    }
+    for mode in ("air", "road", "rail"):
+        provenance[mode] = {
+            "delay_hours": "synthetic",
+            "cost_usd": "synthetic",
+            "on_time_probability": "synthetic",
+            "confidence": "synthetic",
+        }
+    return scenario, provenance, marine, wind
+
+
+def run_live_snapshot() -> dict:
+    """Rank the live snapshot: measured seas through the same engine.
+
+    Identical scoring and ranking code as :func:`run_demo`; only the sea
+    inputs may be measured. Fully offline this equals the baseline demo
+    with every sea field marked synthetic-fallback.
+    """
+    scenario, provenance, marine, wind = build_live_scenario()
+    findings = collect_findings(scenario)
+    options = build_options(findings, scenario["baseline"]["storm_delay_hours_if_waiting"])
+    return {
+        "scenario": scenario["scenario"],
+        "synthetic": False,
+        "data_mode": "live-snapshot",
+        "label": scenario["label"],
+        "marine": marine,
+        "wind": wind,
+        "provenance": provenance,
+        "findings": findings,
+        "ranked_options": score_options(options),
     }

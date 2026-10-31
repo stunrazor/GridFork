@@ -24,6 +24,10 @@ quantified reroutes on Cost, Time Saved, On-Time Probability, and Confidence.
   returning before/after scores plus the assumptions.
 - One live layer: current Rotterdam wind from Open-Meteo (keyless), with a
   labeled synthetic fallback.
+- Phase 1 real data: the `/live` snapshot feeds measured North Sea wave
+  height (Open-Meteo Marine, keyless) and Rotterdam wind into the sea leg
+  through an explicit documented rule; costs and probabilities stay
+  synthetic estimates, and every field carries a provenance label.
 
 ## Endpoints
 
@@ -34,6 +38,7 @@ quantified reroutes on Cost, Time Saved, On-Time Probability, and Confidence.
 - `GET /demo/north-sea-storm/summary` — plus Spark narrative rationale
 - `GET /demo/north-sea-storm/vision` — plus SAM ground truth (`?image_url=`)
 - `GET /demo/north-sea-storm/weather` — live wind or labeled fallback
+- `GET /demo/north-sea-storm/live` — live snapshot: measured waves/wind drive the sea leg, per-field provenance included
 - `GET /demo/north-sea-storm/brief` — plus Muse Wonder decision explanation
 - `GET /demo/north-sea-storm/image` — plus Muse Image illustration
 - `GET /demo/north-sea-storm/openweights?model=` — Spark Open / Glimmer runner setup status (`spark-open`, `glimmer`)

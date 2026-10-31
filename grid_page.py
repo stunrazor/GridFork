@@ -77,6 +77,13 @@ the deterministic engine recomputes the ranking. Runs on demand.</p>
 <h2>Live wind layer</h2>
 <p id="weather" class="note">Loading&hellip;</p>
 
+<h2>Live snapshot</h2>
+<p class="note">Phase 1 real data: measured North Sea waves and Rotterdam wind
+drive the sea leg through the same engine. Costs and probabilities stay
+synthetic estimates; provenance is shown per field. Runs on demand.</p>
+<button id="live-btn" type="button">Run live snapshot</button>
+<p id="live" class="note">Not run yet.</p>
+
 <h2>Meta Models (optional)</h2>
 <p class="note">On-demand extras. Nothing here runs on page load. Wonder and
 Image are paid Meta API calls; open weights need a local runner.</p>
@@ -161,6 +168,22 @@ async function loadWeather() {
       w.wind_kph + " kph" + (w.observed_at ? " at " + w.observed_at : "");
   } catch (e) { document.getElementById("weather").textContent = String(e); }
 }
+document.getElementById("live-btn").addEventListener("click", async () => {
+  const el = document.getElementById("live");
+  el.textContent = "Fetching live snapshot\u2026";
+  try {
+    const snap = await getJSON("/demo/north-sea-storm/live");
+    const top = snap.ranked_options[0];
+    const sea = snap.findings.find(f => f.mode === "sea");
+    el.textContent =
+      "waves " + snap.marine.wave_height_m + "m (" + snap.marine.source + ")" +
+      ", wind " + snap.wind.wind_kph + "kph (" + snap.wind.source + ")" +
+      "; sea " + sea.status + " +" + sea.delay_hours + "h" +
+      " [waves " + snap.provenance.sea.wave_height_m +
+      ", delay " + snap.provenance.sea.delay_hours + "]" +
+      "; top pick now " + top.option_id + " at score " + top.score + ".";
+  } catch (e) { el.textContent = String(e); }
+});
 document.getElementById("vision-btn").addEventListener("click", async () => {
   const el = document.getElementById("vision");
   el.textContent = "Running SAM segmentation\u2026";

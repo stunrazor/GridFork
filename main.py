@@ -21,6 +21,7 @@ from orchestrator import (
     run_demo_with_openweights,
     run_demo_with_summary,
     run_demo_with_vision,
+    run_live_snapshot,
     run_whatif,
 )
 
@@ -55,6 +56,11 @@ def north_sea_storm_vision(image_url: str = VISION_DEFAULT_IMAGE_URL):
 @app.get("/demo/north-sea-storm/weather")
 def north_sea_storm_weather():
     return live_weather.fetch_rotterdam_wind()
+
+
+@app.get("/demo/north-sea-storm/live")
+def north_sea_storm_live():
+    return run_live_snapshot()
 
 
 @app.get("/demo/north-sea-storm/brief")
