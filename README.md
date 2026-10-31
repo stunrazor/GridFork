@@ -41,6 +41,7 @@ quantified reroutes on Cost, Time Saved, On-Time Probability, and Confidence.
 - `GET /demo/north-sea-storm/brief-card` — shareable incident brief page (deterministic text, on-demand Muse Image illustration, print-friendly)
 - `GET /demo/storm-lab` — Storm Scenario Lab: typed or push-to-talk what-if input, open-weight comparison (live or mock), on-demand illustration
 - `POST /demo/north-sea-storm/transcribe` — Muse Voice Transcribe for one base64 WAV clip (`{"audio_b64", "filename"}`)
+- `GET /demo/routes` — route briefing: hero recommendation, KPI strip, comparison plus SVG schematic, side brief, and Evidence / What-if / Bench / Visual stages
 
 ## Run it
 

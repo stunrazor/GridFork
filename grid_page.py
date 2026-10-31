@@ -49,8 +49,9 @@ def render_grid_page() -> str:
 <body>
 <h1>GridFork live grid &mdash; North Sea storm, Rotterdam &rarr; Oslo</h1>
 <p class="sub">Every route. One grid. Zero blind spots. Synthetic demo data.
-Open the <a href="/demo/north-sea-storm/brief-card">shareable incident brief</a>
-or the <a href="/demo/storm-lab">Storm Scenario Lab</a>.</p>
+Open the <a href="/demo/north-sea-storm/brief-card">shareable incident brief</a>,
+the <a href="/demo/storm-lab">Storm Scenario Lab</a>, or the
+<a href="/demo/routes">route briefing</a>.</p>
 
 <h2>Specialist findings</h2>
 <div class="modes" id="modes"><p class="note">Loading&hellip;</p></div>

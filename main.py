@@ -9,6 +9,7 @@ import openweights_client
 import voice_client
 from briefing_card import render_brief_card
 from grid_page import render_grid_page
+from routes_page import render_routes_page
 from storm_lab import render_storm_lab
 from orchestrator import (
     VISION_DEFAULT_IMAGE_URL,
@@ -124,3 +125,8 @@ def north_sea_storm_brief_card():
 @app.get("/demo/storm-lab", response_class=HTMLResponse)
 def north_sea_storm_lab():
     return render_storm_lab()
+
+
+@app.get("/demo/routes", response_class=HTMLResponse)
+def north_sea_storm_routes():
+    return render_routes_page(run_demo())
