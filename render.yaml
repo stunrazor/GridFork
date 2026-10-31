@@ -1,0 +1,24 @@
+# Render blueprint: deploys GridFork from the repo Dockerfile. Secrets are
+# optional (sync: false prompts in the dashboard); without them the app runs
+# fully on offline fallbacks and setup-required states.
+services:
+  - type: web
+    name: gridfork
+    runtime: docker
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: META_MODEL_API_KEY
+        sync: false
+      - key: SPARK_OPEN_BASE_URL
+        sync: false
+      - key: SPARK_OPEN_API_KEY
+        sync: false
+      - key: SPARK_OPEN_MODEL
+        sync: false
+      - key: GLIMMER_BASE_URL
+        sync: false
+      - key: GLIMMER_API_KEY
+        sync: false
+      - key: GLIMMER_MODEL_NAME
+        sync: false
