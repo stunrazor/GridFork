@@ -353,16 +353,41 @@ CHALLENGE_AUTHORITATIVE_NOTE = (
 )
 
 
+# Fixed canned critique for offline mock previews. It always prefers rail,
+# so the mock agrees on the first two cases and misses the road flip on the
+# third — exercising the real agreement computation without any network use.
+MOCK_CRITIQUE_TEXT = (
+    '{"agree_with_top_pick": true, '
+    '"preferred_option_id": "rail-reroute", '
+    '"concerns": ["Mock critique for offline preview"], "confidence": 0.7}'
+)
+
+
+def _mock_challenge_completion(model_key: str, prompt: str) -> dict:
+    """Return a canned completion; never touches the network or runners."""
+    _ = (model_key, prompt)
+    return {
+        "model": model_key,
+        "source": "mock",
+        "text": MOCK_CRITIQUE_TEXT,
+        "latency_ms": None,
+        "usage": None,
+    }
+
+
 def run_challenge(
     model_keys: tuple[str, ...] | list[str] = ("spark-open", "glimmer"),
     timeout: float = 300.0,
+    mock: bool = False,
 ) -> dict:
     """Run the route challenge: each model critiques each fixed storm case.
 
     Agreement means the model's preferred option matches the deterministic
     rank-1 pick. A model failure (unconfigured runner, unreachable server,
     invalid JSON) marks that entry accordingly and never raises; only an
-    unknown model key raises ValueError.
+    unknown model key raises ValueError. With ``mock=True`` every entry
+    uses fixed canned critiques labeled ``source: "mock"`` and no network
+    call is attempted.
     """
     keys = list(model_keys)
     for key in keys:
@@ -394,9 +419,12 @@ def run_challenge(
             prompt = openweights_client.build_critique_prompt(
                 case["label"], case["findings"], case["ranked_options"]
             )
-            completion = openweights_client.complete_with_metrics(
-                key, prompt, timeout=timeout
-            )
+            if mock:
+                completion = _mock_challenge_completion(key, prompt)
+            else:
+                completion = openweights_client.complete_with_metrics(
+                    key, prompt, timeout=timeout
+                )
             entry = {
                 "case_id": case["case_id"],
                 "model": key,
@@ -413,7 +441,7 @@ def run_challenge(
                 "usage": completion["usage"],
                 "error": None,
             }
-            if completion["source"] == "openweights-local":
+            if completion["source"] in ("openweights-local", "mock"):
                 try:
                     critique = openweights_client.parse_critique_response(
                         completion["text"],

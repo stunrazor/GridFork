@@ -38,6 +38,9 @@ quantified reroutes on Cost, Time Saved, On-Time Probability, and Confidence.
 - `GET /demo/north-sea-storm/openweights?model=` — Spark Open / Glimmer runner setup status (`spark-open`, `glimmer`)
 - `GET /demo/north-sea-storm/whatif?q=` — Wonder assumptions plus before/after ranking for a what-if question
 - `GET /demo/north-sea-storm/challenge?models=` — open-weight route challenge: both models critique three fixed cases, scored on agreement, schema validity, latency, and tokens
+- `GET /demo/north-sea-storm/brief-card` — shareable incident brief page (deterministic text, on-demand Muse Image illustration, print-friendly)
+- `GET /demo/storm-lab` — Storm Scenario Lab: typed or push-to-talk what-if input, open-weight comparison (live or mock), on-demand illustration
+- `POST /demo/north-sea-storm/transcribe` — Muse Voice Transcribe for one base64 WAV clip (`{"audio_b64", "filename"}`)
 
 ## Run it
 
@@ -80,6 +83,13 @@ endpoint still works on deterministic fallbacks. Tests run offline:
   (`https://api.together.xyz/v1`, `meta-models/Muse-Glimmer-30B`,
   $0.35/$1.50 per 1M) or local Ollama. A full 6-call challenge costs
   a few cents.
+- Storm Scenario Lab prerequisites: no single partner is confirmed for
+  both open models, so live comparison legs report `setup-required` /
+  `unreachable` until runners are configured; `?mock=true` previews the
+  panel with fixed canned critiques (labeled `mock`, no network).
+  Voice transcription needs `META_MODEL_API_KEY` (`muse-voice-transcribe-1.0`,
+  paid per audio hour); without it the endpoint reports `setup-required`.
+  The microphone is used only while the talk button is held.
 
 ## Demo video
 
