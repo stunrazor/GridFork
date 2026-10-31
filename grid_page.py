@@ -36,6 +36,7 @@ def render_grid_page() -> str:
   th { background: #eee; }
   tr.top td { font-weight: bold; }
   button { font-size: 0.9rem; padding: 0.4rem 0.9rem; cursor: pointer; }
+  input { font-size: 0.9rem; padding: 0.35rem 0.5rem; width: 65%; }
   h3 { font-size: 0.95rem; margin: 1.25rem 0 0.25rem; }
   img.illus { max-width: 100%; border: 1px solid #ccc; margin-top: 0.5rem; }
   .note { font-size: 0.85rem; color: #444; }
@@ -54,6 +55,13 @@ def render_grid_page() -> str:
 
 <h2>Ranked reroutes</h2>
 <table id="ranking"><tr><td class="note">Loading&hellip;</td></tr></table>
+
+<h2>What-if planner</h2>
+<p class="note">Ask Muse Wonder to turn a question into explicit assumptions;
+the deterministic engine recomputes the ranking. Runs on demand.</p>
+<input id="whatif-input" value="What if Rotterdam closes for six more hours?">
+<button id="whatif-btn" type="button">Run what-if</button>
+<div id="whatif" class="note">Not run yet.</div>
 
 <h2>Narrative summary</h2>
 <p id="summary" class="note">Loading&hellip;</p>
@@ -99,7 +107,8 @@ SAM 3.1 segmentation (<code>source: sam-3.1</code> live,
 brief (<code>muse-wonder</code> live, <code>deterministic</code> offline)
 &middot; Muse Image illustration (<code>muse-image</code> live,
 <code>unavailable</code> offline) &middot; open weights
-(<code>setup-required</code> until a runner is configured).</p>
+(<code>setup-required</code> until a runner is configured) &middot; what-if
+planner (Wonder assumptions, deterministic rescoring).</p>
 </footer>
 
 <script>
@@ -161,6 +170,39 @@ document.getElementById("brief-btn").addEventListener("click", async () => {
   try {
     const demo = await getJSON("/demo/north-sea-storm/brief");
     el.textContent = "[" + demo.brief.source + "] " + demo.brief.text;
+  } catch (e) { el.textContent = String(e); }
+});
+document.getElementById("whatif-btn").addEventListener("click", async () => {
+  const el = document.getElementById("whatif");
+  el.textContent = "Asking Muse Wonder\u2026";
+  try {
+    const q = document.getElementById("whatif-input").value;
+    const demo = await getJSON("/demo/north-sea-storm/whatif?q=" + encodeURIComponent(q));
+    el.textContent = "";
+    const head = document.createElement("p");
+    head.textContent = "[" + demo.whatif.source + "] " + demo.whatif.explanation;
+    el.appendChild(head);
+    const list = document.createElement("ul");
+    if (demo.whatif.assumptions.length === 0) {
+      const li = document.createElement("li");
+      li.textContent = "No assumptions: ranking unchanged.";
+      list.appendChild(li);
+    }
+    demo.whatif.assumptions.forEach(a => {
+      const li = document.createElement("li");
+      li.textContent = a.mode + " " + a.field + " " +
+        (a.delta > 0 ? "+" : "") + a.delta + (a.reason ? " (" + a.reason + ")" : "");
+      list.appendChild(li);
+    });
+    el.appendChild(list);
+    const rows = demo.comparison.map(c =>
+      "<tr><td>" + c.option_id + "</td><td>" + c.rank_before + " &rarr; " +
+      c.rank_after + "</td><td>" + c.score_before + " &rarr; " +
+      c.score_after + "</td></tr>").join("");
+    const table = document.createElement("table");
+    table.innerHTML = "<tr><th>Option</th><th>Rank before &rarr; after</th>" +
+      "<th>Score before &rarr; after</th></tr>" + rows;
+    el.appendChild(table);
   } catch (e) { el.textContent = String(e); }
 });
 document.getElementById("image-btn").addEventListener("click", async () => {

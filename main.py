@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse
 
 import live_weather
@@ -12,6 +12,7 @@ from orchestrator import (
     run_demo_with_openweights,
     run_demo_with_summary,
     run_demo_with_vision,
+    run_whatif,
 )
 
 app = FastAPI(title="GridFork")
@@ -60,6 +61,14 @@ def north_sea_storm_openweights(model: str = "spark-open"):
 @app.get("/demo/north-sea-storm/openweights/ask")
 def north_sea_storm_openweights_ask(model: str = "spark-open"):
     return run_demo_with_openweights(model)
+
+
+@app.get("/demo/north-sea-storm/whatif")
+def north_sea_storm_whatif(q: str = ""):
+    try:
+        return run_whatif(q)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
 
 
 @app.get("/demo/grid", response_class=HTMLResponse)

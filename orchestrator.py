@@ -4,6 +4,7 @@ Pure Python, no randomness, no clock, no network. Given the same findings,
 the scores and ranking are always identical.
 """
 
+import copy
 import json
 from pathlib import Path
 
@@ -218,3 +219,95 @@ def run_demo_with_openweights(model_key: str = "spark-open") -> dict:
     prompt = openweights_client.build_severity_prompt(demo["findings"])
     demo["openweights"] = openweights_client.generate_text(model_key, prompt)
     return demo
+
+
+# Fields a what-if assumption may adjust, with their clamp rules applied in
+# apply_whatif_assumptions: delays and costs floor at zero, probabilities
+# stay in 0..1.
+WHATIF_ADJUSTABLE_FIELDS = (
+    "delay_hours",
+    "cost_usd",
+    "on_time_probability",
+    "confidence",
+)
+
+
+def apply_whatif_assumptions(scenario: dict, assumptions: list[dict]) -> dict:
+    """Return a copy of scenario with assumption deltas added in.
+
+    Unknown modes, fields, or non-numeric deltas are skipped so one bad
+    entry can never corrupt the recompute. The input scenario is untouched.
+    """
+    updated = copy.deepcopy(scenario)
+    modes = updated.get("modes", {})
+    for item in assumptions or []:
+        if not isinstance(item, dict):
+            continue
+        mode, field, delta = item.get("mode"), item.get("field"), item.get("delta")
+        if mode not in modes or not isinstance(modes[mode], dict):
+            continue
+        if field not in WHATIF_ADJUSTABLE_FIELDS:
+            continue
+        if isinstance(delta, bool) or not isinstance(delta, (int, float)):
+            continue
+        current = modes[mode].get(field)
+        if isinstance(current, bool) or not isinstance(current, (int, float)):
+            continue
+        value = current + delta
+        if field in ("delay_hours", "cost_usd"):
+            modes[mode][field] = max(0, int(round(value)))
+        else:
+            modes[mode][field] = round(min(1.0, max(0.0, float(value))), 4)
+    return updated
+
+
+def run_whatif(question: str) -> dict:
+    """Answer a what-if question with before/after deterministic rankings.
+
+    Muse Wonder (or the deterministic parser offline) turns the question
+    into explicit assumptions; the existing deterministic engine then
+    recomputes findings, scores, and ranking from the adjusted scenario.
+    The model never scores or ranks. Raises ValueError on a blank question.
+    """
+    asked = (question or "").strip()
+    if not asked:
+        raise ValueError(
+            "Ask a what-if question, e.g. "
+            "'What if Rotterdam closes for six more hours?'"
+        )
+    baseline = run_demo()
+    whatif = wonder_client.generate_whatif(
+        asked, baseline["ranked_options"], baseline["findings"]
+    )
+    scenario = apply_whatif_assumptions(load_scenario(), whatif["assumptions"])
+    findings_after = collect_findings(scenario)
+    options_after = build_options(
+        findings_after, scenario["baseline"]["storm_delay_hours_if_waiting"]
+    )
+    ranked_after = score_options(options_after)
+    before_by_id = {o["option_id"]: o for o in baseline["ranked_options"]}
+    comparison = []
+    for option in ranked_after:
+        before = before_by_id[option["option_id"]]
+        comparison.append(
+            {
+                "option_id": option["option_id"],
+                "title": option["title"],
+                "score_before": before["score"],
+                "score_after": option["score"],
+                "score_delta": round(option["score"] - before["score"], 4),
+                "rank_before": before["rank"],
+                "rank_after": option["rank"],
+            }
+        )
+    return {
+        "scenario": baseline["scenario"],
+        "synthetic": True,
+        "label": baseline["label"],
+        "question": asked,
+        "whatif": whatif,
+        "ranked_baseline": baseline["ranked_options"],
+        "findings_after": findings_after,
+        "ranked_options": ranked_after,
+        "comparison": comparison,
+    }

@@ -15,7 +15,9 @@ response) falls back to the deterministic brief so the demo keeps working
 offline.
 """
 
+import json
 import os
+import re
 
 import httpx
 
@@ -24,6 +26,87 @@ import httpx
 CHAT_COMPLETIONS_URL = "https://api.meta.ai/v1/chat/completions"
 MODEL_ID = "muse-wonder-1.0"
 API_KEY_ENV_VAR = "META_MODEL_API_KEY"
+
+# What-if assumption vocabulary. Deltas are added to the current scenario
+# value by the deterministic engine; the model never scores or ranks.
+WHATIF_MODES = ("sea", "air", "road", "rail")
+WHATIF_FIELDS = ("delay_hours", "cost_usd", "on_time_probability", "confidence")
+
+MODE_KEYWORDS = {
+    "sea": ("sea", "rotterdam", "port", "ship", "vessel", "sail", "sailing", "storm"),
+    "air": ("air", "flight", "fly", "ams", "schiphol", "plane", "de-icing", "deicing"),
+    "road": ("road", "truck", "bridge", "denmark", "danish", "driver", "belt"),
+    "rail": ("rail", "train", "intermodal", "corridor", "slot"),
+}
+
+NUMBER_WORDS = {
+    "a": 1,
+    "an": 1,
+    "one": 1,
+    "two": 2,
+    "three": 3,
+    "four": 4,
+    "five": 5,
+    "six": 6,
+    "seven": 7,
+    "eight": 8,
+    "nine": 9,
+    "ten": 10,
+    "eleven": 11,
+    "twelve": 12,
+    "thirteen": 13,
+    "fourteen": 14,
+    "fifteen": 15,
+    "sixteen": 16,
+    "seventeen": 17,
+    "eighteen": 18,
+    "nineteen": 19,
+    "twenty": 20,
+}
+
+_NUM_ALTERNATION = "|".join(
+    sorted(NUMBER_WORDS, key=len, reverse=True) + [r"\d+"]
+)
+_HOUR_RE = re.compile(
+    rf"\b(?P<num>{_NUM_ALTERNATION})\s*-?\s*"
+    r"(?:more\s+|additional\s+|extra\s+)?(?P<unit>hours?|hrs?|h)\b"
+)
+_COST_RE = re.compile(
+    r"\$\s*(?P<dollars>\d[\d,]*)|(?P<words>\d[\d,]*)\s*(?:dollars?|usd)\b",
+    re.IGNORECASE,
+)
+# Words near an amount that flip its sign ("clears 10 hours early" -> -10).
+_REDUCTION_CUES = (
+    "less",
+    "fewer",
+    "shorter",
+    "earlier",
+    "early",
+    "reduce",
+    "reduced",
+    "reduction",
+    "cut",
+    "save",
+    "saves",
+    "saved",
+    "saving",
+    "shave",
+    "clear",
+    "clears",
+    "cleared",
+    "ease",
+    "eased",
+    "cheaper",
+    "discount",
+)
+_ALL_MODES_PHRASES = (
+    "everything",
+    "all modes",
+    "every mode",
+    "all routes",
+    "every route",
+    "all four",
+)
 
 
 def build_brief_prompt(ranked_options: list[dict], findings: list[dict]) -> str:
@@ -74,7 +157,7 @@ def deterministic_brief(ranked_options: list[dict], findings: list[dict]) -> str
     )
 
 
-def fetch_wonder_brief(prompt: str, api_key: str, timeout: float = 60.0) -> str:
+def fetch_wonder_text(prompt: str, api_key: str, timeout: float = 60.0) -> str:
     """Call the documented chat-completions endpoint and return the text.
 
     Raises on transport errors, non-2xx status, or an unexpected payload.
@@ -96,6 +179,11 @@ def fetch_wonder_brief(prompt: str, api_key: str, timeout: float = 60.0) -> str:
     return str(response.json()["choices"][0]["message"]["content"])
 
 
+def fetch_wonder_brief(prompt: str, api_key: str, timeout: float = 60.0) -> str:
+    """Fetch a cascade brief; kept as the stable name used by callers."""
+    return fetch_wonder_text(prompt, api_key, timeout=timeout)
+
+
 def generate_brief(ranked_options: list[dict], findings: list[dict]) -> dict:
     """Return a brief dict, preferring Muse Wonder with deterministic fallback."""
     prompt = build_brief_prompt(ranked_options, findings)
@@ -113,3 +201,219 @@ def generate_brief(ranked_options: list[dict], findings: list[dict]) -> dict:
             "text": deterministic_brief(ranked_options, findings),
         }
     return {"source": "muse-wonder", "text": text}
+
+
+def build_whatif_prompt(
+    question: str, ranked_options: list[dict], findings: list[dict]
+) -> str:
+    """Build a deterministic prompt asking Wonder for strict-JSON assumptions."""
+    lines = [
+        "Translate a freight what-if question into explicit scenario assumptions.",
+        "Output ONLY strict JSON, no markdown, no commentary:",
+        '{"assumptions": [{"mode": ..., "field": ..., "delta": ..., "reason": ...}],'
+        ' "explanation": "..."}',
+        'Allowed "mode": "sea", "air", "road", "rail.',
+        'Allowed "field": "delay_hours" (integer hours), "cost_usd" (integer dollars),'
+        ' "on_time_probability" (float change), "confidence" (float change).',
+        '"delta" is ADDED to the current value. "reason" is one short phrase.',
+        '"explanation" is one or two sentences for the operator.',
+        "Rules: only include assumptions the question directly implies;",
+        "extra closure or waiting hours become a positive delay_hours delta;",
+        "use an empty assumptions array when nothing is quantifiable;",
+        "never invent scores or rankings; a separate engine recomputes those.",
+        "Synthetic demo data. Findings:",
+    ]
+    for finding in findings:
+        lines.append(
+            f"- {finding['mode']}: {finding['status']}, "
+            f"+{finding['delay_hours']}h delay, "
+            f"cost ${finding['cost_usd']}, "
+            f"on-time {finding['on_time_probability']}."
+        )
+    lines.append("Current ranking:")
+    for option in ranked_options:
+        lines.append(
+            f"Rank {option['rank']}: {option['option_id']}, "
+            f"score {option['score']}."
+        )
+    lines.append(f"Question: {question.strip()}")
+    return "\n".join(lines)
+
+
+def parse_whatif_response(text: str) -> dict:
+    """Parse Wonder's strict-JSON what-if reply into assumptions + explanation.
+
+    Raises ValueError when the reply is not usable JSON; individual
+    assumption entries with an unknown mode, field, or non-numeric delta
+    are dropped instead of failing the whole reply.
+    """
+    cleaned = text.strip()
+    if cleaned.startswith("```"):
+        fence_lines = cleaned.splitlines()[1:]
+        if fence_lines and fence_lines[-1].strip().startswith("```"):
+            fence_lines = fence_lines[:-1]
+        cleaned = "\n".join(fence_lines).strip()
+    try:
+        payload = json.loads(cleaned)
+    except (json.JSONDecodeError, ValueError) as exc:
+        raise ValueError(f"what-if reply is not JSON: {exc}") from exc
+    if not isinstance(payload, dict):
+        raise ValueError("what-if reply must be a JSON object")
+    raw_assumptions = payload.get("assumptions", [])
+    if not isinstance(raw_assumptions, list):
+        raise ValueError("what-if reply 'assumptions' must be a list")
+    assumptions = []
+    for item in raw_assumptions:
+        if not isinstance(item, dict):
+            continue
+        mode, field, delta = item.get("mode"), item.get("field"), item.get("delta")
+        if mode not in WHATIF_MODES or field not in WHATIF_FIELDS:
+            continue
+        if isinstance(delta, bool) or not isinstance(delta, (int, float)):
+            continue
+        if field in ("delay_hours", "cost_usd"):
+            delta = int(round(delta))
+        else:
+            delta = round(float(delta), 4)
+        reason = item.get("reason", "")
+        assumptions.append(
+            {
+                "mode": mode,
+                "field": field,
+                "delta": delta,
+                "reason": str(reason)[:200] if reason else "",
+            }
+        )
+    explanation = payload.get("explanation", "")
+    explanation = str(explanation).strip() if explanation else ""
+    if not explanation:
+        explanation = (
+            "Muse Wonder provided scenario assumptions; "
+            "the deterministic engine recomputed the ranking."
+        )
+    return {"assumptions": assumptions, "explanation": explanation}
+
+
+def _keyword_positions(question: str) -> list[tuple[int, str]]:
+    """Return (char position, mode) for every mode keyword in the question.
+
+    Keywords match at a word start so plurals ("trucks") still hit while
+    "air" inside "rail" does not.
+    """
+    positions = []
+    for mode in WHATIF_MODES:
+        for keyword in MODE_KEYWORDS[mode]:
+            for match in re.finditer(r"\b" + re.escape(keyword), question):
+                positions.append((match.start(), mode))
+    return positions
+
+
+def _nearest_modes(question: str, match_pos: int) -> list[str]:
+    """Return the mode(s) an amount at match_pos applies to, if identifiable."""
+    positions = _keyword_positions(question)
+    if not positions:
+        if any(phrase in question for phrase in _ALL_MODES_PHRASES):
+            return list(WHATIF_MODES)
+        return []
+    best = min(abs(pos - match_pos) for pos, _ in positions)
+    for pos, mode in sorted(positions):
+        if abs(pos - match_pos) == best:
+            return [mode]
+    return []  # unreachable, kept for clarity
+
+
+def _is_reduction(question: str, match_start: int) -> bool:
+    """Check the words just before an amount for a reduction cue."""
+    window = question[max(0, match_start - 30) : match_start]
+    return any(cue in window for cue in _REDUCTION_CUES)
+
+
+def _format_whatif_delta(mode: str, field: str, delta: int) -> str:
+    if field == "delay_hours":
+        return f"{mode} delay {delta:+d}h"
+    if field == "cost_usd":
+        return f"{mode} cost {delta:+d} USD"
+    return f"{mode} {field} {delta:+d}"
+
+
+def deterministic_whatif(question: str) -> dict:
+    """Parse hour/cost amounts into assumptions without calling Wonder.
+
+    Each amount attaches to the nearest mode keyword ("Rotterdam" implies
+    the sea leg); amounts with no identifiable mode are skipped.
+    """
+    lowered = question.strip().lower()
+    grouped: dict[tuple[str, str], list] = {}
+
+    def add(mode: str, field: str, delta: int, span: str) -> None:
+        key = (mode, field)
+        if key in grouped:
+            grouped[key][0] += delta
+        else:
+            grouped[key] = [delta, span.strip()[:60]]
+
+    found_amount = False
+    for match in _HOUR_RE.finditer(lowered):
+        found_amount = True
+        raw_num = match.group("num")
+        hours = int(raw_num) if raw_num.isdigit() else NUMBER_WORDS.get(raw_num, 0)
+        if hours == 0:
+            continue
+        if _is_reduction(lowered, match.start()):
+            hours = -hours
+        for mode in _nearest_modes(lowered, match.start()):
+            add(mode, "delay_hours", hours, match.group(0))
+    for match in _COST_RE.finditer(lowered):
+        found_amount = True
+        raw_amt = (match.group("dollars") or match.group("words") or "").replace(",", "")
+        if not raw_amt.isdigit():
+            continue
+        dollars = int(raw_amt)
+        if _is_reduction(lowered, match.start()):
+            dollars = -dollars
+        for mode in _nearest_modes(lowered, match.start()):
+            add(mode, "cost_usd", dollars, match.group(0))
+
+    assumptions = [
+        {"mode": mode, "field": field, "delta": delta, "reason": f"Parsed '{span}'."}
+        for (mode, field), (delta, span) in sorted(
+            grouped.items(),
+            key=lambda kv: (WHATIF_MODES.index(kv[0][0]), WHATIF_FIELDS.index(kv[0][1])),
+        )
+        if delta != 0
+    ]
+    if assumptions:
+        joined = "; ".join(
+            _format_whatif_delta(a["mode"], a["field"], a["delta"]) for a in assumptions
+        )
+        explanation = (
+            f"Assumed: {joined}. "
+            "The deterministic engine recomputes scores and ranking from these."
+        )
+    elif found_amount:
+        explanation = (
+            "Found an amount but could not identify which mode "
+            "(sea, air, road, rail) it applies to; ranking unchanged."
+        )
+    else:
+        explanation = (
+            "No quantifiable change found in the question; ranking unchanged. "
+            "Mention a mode and an amount, e.g. 'sea +6 hours' or 'rail saves $700'."
+        )
+    return {"assumptions": assumptions, "explanation": explanation}
+
+
+def generate_whatif(
+    question: str, ranked_options: list[dict], findings: list[dict]
+) -> dict:
+    """Return what-if assumptions, preferring Muse Wonder with fallback."""
+    prompt = build_whatif_prompt(question, ranked_options, findings)
+    api_key = os.environ.get(API_KEY_ENV_VAR)
+    if not api_key:
+        return {"source": "deterministic", **deterministic_whatif(question)}
+    try:
+        text = fetch_wonder_text(prompt, api_key)
+        parsed = parse_whatif_response(text)
+    except Exception:
+        return {"source": "deterministic", **deterministic_whatif(question)}
+    return {"source": "muse-wonder", **parsed}

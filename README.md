@@ -18,6 +18,10 @@ quantified reroutes on Cost, Time Saved, On-Time Probability, and Confidence.
 - SAM 3.1 visual verification: the `/vision` endpoint segments container
   reference imagery and blends the congestion score into the sea leg, with
   an `unavailable` fallback offline.
+- Wonder what-if planner: the `/whatif?q=` endpoint turns an operator
+  question into explicit assumptions (Muse Wonder live, deterministic
+  parser offline) and the deterministic engine recomputes the ranking,
+  returning before/after scores plus the assumptions.
 - One live layer: current Rotterdam wind from Open-Meteo (keyless), with a
   labeled synthetic fallback.
 
@@ -32,6 +36,7 @@ quantified reroutes on Cost, Time Saved, On-Time Probability, and Confidence.
 - `GET /demo/north-sea-storm/brief` — plus Muse Wonder decision explanation
 - `GET /demo/north-sea-storm/image` — plus Muse Image illustration
 - `GET /demo/north-sea-storm/openweights?model=` — Spark Open / Glimmer runner setup status (`spark-open`, `glimmer`)
+- `GET /demo/north-sea-storm/whatif?q=` — Wonder assumptions plus before/after ranking for a what-if question
 
 ## Run it
 
