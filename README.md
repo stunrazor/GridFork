@@ -27,6 +27,7 @@ quantified reroutes on Cost, Time Saved, On-Time Probability, and Confidence.
 
 ## Endpoints
 
+- `GET /` — landing page with buttons to every view
 - `GET /health`
 - `GET /demo/grid` — observable grid page (findings, ranking, vision, wind)
 - `GET /demo/north-sea-storm` — findings plus ranked options (JSON)

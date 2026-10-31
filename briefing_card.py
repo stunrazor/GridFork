@@ -101,7 +101,8 @@ def render_brief_card(demo: dict) -> str:
         + _CSS
         + "</style>\n</head>\n<body>\n"
         "<h1>GridFork incident brief &mdash; North Sea storm, Rotterdam &rarr; Oslo</h1>\n"
-        f'<p class="sub">Every route. One grid. Zero blind spots. {demo["label"]}</p>\n'
+        f'<p class="sub">Every route. One grid. Zero blind spots. {demo["label"]} '
+        '<a href="/">Home</a>.</p>\n'
         '<p class="note">Shareable page: print to PDF to distribute.</p>\n'
         "<h2>Recommendation</h2>\n"
         '<div class="rec">\n'

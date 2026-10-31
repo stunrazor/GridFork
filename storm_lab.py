@@ -37,8 +37,8 @@ _PAGE = """<!DOCTYPE html>
 <body>
 <h1>Storm Scenario Lab</h1>
 <p class="sub">Optional workbench beside the live grid. Synthetic demo data.
-Every live call below runs only when you click. <a href="/demo/grid">Back to
-the grid</a>.</p>
+Every live call below runs only when you click. <a href="/">Home</a> &middot;
+<a href="/demo/grid">Back to the grid</a>.</p>
 
 <h2>1. Scenario question</h2>
 <p class="note">Type a what-if, or hold the talk button to dictate it. The

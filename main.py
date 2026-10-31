@@ -9,6 +9,7 @@ import openweights_client
 import voice_client
 from briefing_card import render_brief_card
 from grid_page import render_grid_page
+from landing_page import render_landing
 from routes_page import render_routes_page
 from storm_lab import render_storm_lab
 from orchestrator import (
@@ -24,6 +25,11 @@ from orchestrator import (
 )
 
 app = FastAPI(title="GridFork")
+
+
+@app.get("/", response_class=HTMLResponse)
+def landing():
+    return render_landing()
 
 
 @app.get("/health")

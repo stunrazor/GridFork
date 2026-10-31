@@ -358,7 +358,8 @@ def render_routes_page(demo: dict) -> str:
         "<h1>GridFork route briefing &mdash; Rotterdam &rarr; Oslo</h1>\n"
         f'<p class="sub"><span class="pill {sea["status"]}">STORM DISRUPTION</span> '
         '<span class="badge live">SYNTHETIC DEMO DATA</span> '
-        '<span class="badge">DETERMINISTIC SCORING</span></p>\n'
+        '<span class="badge">DETERMINISTIC SCORING</span> '
+        '<a href="/">Home</a></p>\n'
         "</header>\n"
         '<div class="kpi-strip">\n'
         f'<div class="kpi"><div class="k">Score</div><div class="v">{top["score"]}</div></div>\n'
