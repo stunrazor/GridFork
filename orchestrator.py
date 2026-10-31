@@ -311,3 +311,160 @@ def run_whatif(question: str) -> dict:
         "ranked_options": ranked_after,
         "comparison": comparison,
     }
+
+
+# Fixed synthetic storm cases for the open-weight route challenge. Every
+# model critiques the same cases; the last one flips the deterministic top
+# pick from rail to road, so agreement is a real signal, not a given.
+CHALLENGE_CASES = (
+    {
+        "case_id": "baseline",
+        "label": "Baseline North Sea storm (synthetic)",
+        "assumptions": [],
+    },
+    {
+        "case_id": "rotterdam-plus-6h",
+        "label": "Rotterdam closure extended six hours (synthetic)",
+        "assumptions": [
+            {
+                "mode": "sea",
+                "field": "delay_hours",
+                "delta": 6,
+                "reason": "Challenge case: port closure extended.",
+            }
+        ],
+    },
+    {
+        "case_id": "rail-plus-30h",
+        "label": "Rail corridor blocked thirty extra hours (synthetic)",
+        "assumptions": [
+            {
+                "mode": "rail",
+                "field": "delay_hours",
+                "delta": 30,
+                "reason": "Challenge case: rail corridor blocked.",
+            }
+        ],
+    },
+)
+
+CHALLENGE_AUTHORITATIVE_NOTE = (
+    "Deterministic ranking is authoritative; model critiques are advisory."
+)
+
+
+def run_challenge(
+    model_keys: tuple[str, ...] | list[str] = ("spark-open", "glimmer"),
+    timeout: float = 300.0,
+) -> dict:
+    """Run the route challenge: each model critiques each fixed storm case.
+
+    Agreement means the model's preferred option matches the deterministic
+    rank-1 pick. A model failure (unconfigured runner, unreachable server,
+    invalid JSON) marks that entry accordingly and never raises; only an
+    unknown model key raises ValueError.
+    """
+    keys = list(model_keys)
+    for key in keys:
+        if key not in openweights_client.MODELS:
+            raise ValueError(f"unknown open-weight model: {key!r}")
+    base = run_demo()
+    cases = []
+    for spec in CHALLENGE_CASES:
+        scenario = apply_whatif_assumptions(load_scenario(), spec["assumptions"])
+        findings = collect_findings(scenario)
+        ranked = score_options(
+            build_options(
+                findings, scenario["baseline"]["storm_delay_hours_if_waiting"]
+            )
+        )
+        cases.append(
+            {
+                "case_id": spec["case_id"],
+                "label": spec["label"],
+                "assumptions": spec["assumptions"],
+                "deterministic_top": ranked[0]["option_id"],
+                "findings": findings,
+                "ranked_options": ranked,
+            }
+        )
+    results = []
+    for key in keys:
+        for case in cases:
+            prompt = openweights_client.build_critique_prompt(
+                case["label"], case["findings"], case["ranked_options"]
+            )
+            completion = openweights_client.complete_with_metrics(
+                key, prompt, timeout=timeout
+            )
+            entry = {
+                "case_id": case["case_id"],
+                "model": key,
+                "source": completion["source"],
+                "advisory": True,
+                "schema_valid": False,
+                "agrees_with_ranking": None,
+                "deterministic_top": case["deterministic_top"],
+                "preferred_option_id": None,
+                "agree_flag": None,
+                "confidence": None,
+                "concerns": [],
+                "latency_ms": completion["latency_ms"],
+                "usage": completion["usage"],
+                "error": None,
+            }
+            if completion["source"] == "openweights-local":
+                try:
+                    critique = openweights_client.parse_critique_response(
+                        completion["text"],
+                        [o["option_id"] for o in case["ranked_options"]],
+                    )
+                except ValueError as exc:
+                    entry["error"] = f"invalid critique JSON: {exc}"
+                else:
+                    entry["schema_valid"] = True
+                    entry["agrees_with_ranking"] = (
+                        critique["preferred_option_id"] == case["deterministic_top"]
+                    )
+                    entry["preferred_option_id"] = critique["preferred_option_id"]
+                    entry["agree_flag"] = critique["agree_with_top_pick"]
+                    entry["confidence"] = critique["confidence"]
+                    entry["concerns"] = critique["concerns"]
+            else:
+                entry["error"] = completion.get("detail")
+            results.append(entry)
+    summary = []
+    for key in keys:
+        model_results = [r for r in results if r["model"] == key]
+        valid = [r for r in model_results if r["schema_valid"]]
+        agreements = sum(1 for r in valid if r["agrees_with_ranking"])
+        token_totals = [
+            r["usage"]["total_tokens"]
+            for r in model_results
+            if r["usage"] and r["usage"].get("total_tokens") is not None
+        ]
+        latencies = [r["latency_ms"] for r in model_results if r["latency_ms"] is not None]
+        summary.append(
+            {
+                "model": key,
+                "label": openweights_client.MODELS[key]["label"],
+                "cases": len(model_results),
+                "schema_valid": len(valid),
+                "schema_valid_rate": round(len(valid) / len(model_results), 4),
+                "agreements": agreements,
+                "agreement_rate": round(agreements / len(valid), 4) if valid else None,
+                "total_tokens": sum(token_totals) if token_totals else None,
+                "avg_latency_ms": (
+                    round(sum(latencies) / len(latencies), 1) if latencies else None
+                ),
+            }
+        )
+    return {
+        "scenario": base["scenario"],
+        "synthetic": True,
+        "label": base["label"],
+        "authoritative": CHALLENGE_AUTHORITATIVE_NOTE,
+        "cases": cases,
+        "results": results,
+        "summary": summary,
+    }

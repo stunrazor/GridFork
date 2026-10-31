@@ -37,6 +37,7 @@ quantified reroutes on Cost, Time Saved, On-Time Probability, and Confidence.
 - `GET /demo/north-sea-storm/image` — plus Muse Image illustration
 - `GET /demo/north-sea-storm/openweights?model=` — Spark Open / Glimmer runner setup status (`spark-open`, `glimmer`)
 - `GET /demo/north-sea-storm/whatif?q=` — Wonder assumptions plus before/after ranking for a what-if question
+- `GET /demo/north-sea-storm/challenge?models=` — open-weight route challenge: both models critique three fixed cases, scored on agreement, schema validity, latency, and tokens
 
 ## Run it
 
@@ -67,6 +68,18 @@ endpoint still works on deterministic fallbacks. Tests run offline:
   `GLIMMER_MODEL_NAME` override exists). See `openweights_client.py`
   for the verified checkpoints, runners, and hardware notes. No weights
   are downloaded and no runner is started by this repo.
+- The route challenge keeps the deterministic ranking authoritative:
+  model critiques are labeled advisory and scored on agreement with the
+  rank-1 pick, strict-schema validity, latency, and token usage.
+- Hosted partner (checked Oct 31 2026): Fireworks serves Spark Open
+  serverless at `https://api.fireworks.ai/inference/v1` as
+  `accounts/fireworks/models/muse-spark-open` ($1.25/$4.25 per 1M tokens,
+  US-only). Glimmer is NOT on Fireworks serverless (deprecated Sep 25
+  2026 per their model page; on-demand deployments only). For a live
+  Glimmer leg use Together AI serverless
+  (`https://api.together.xyz/v1`, `meta-models/Muse-Glimmer-30B`,
+  $0.35/$1.50 per 1M) or local Ollama. A full 6-call challenge costs
+  a few cents.
 
 ## Demo video
 

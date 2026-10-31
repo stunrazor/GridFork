@@ -97,6 +97,12 @@ These buttons only check runner setup; they start nothing.</p>
 <button id="ow-ask-glimmer-btn" type="button">Classify with Glimmer</button>
 <p id="ow-ask-spark" class="note">Not run yet.</p>
 <p id="ow-ask-glimmer" class="note">Not run yet.</p>
+<h3>Route challenge &mdash; both models critique the ranking</h3>
+<p class="note">Advisory only: the deterministic ranking stays authoritative.
+Same three storm cases per model; shows agreement, schema validity, latency,
+and tokens. Runs on demand; local inference can take minutes.</p>
+<button id="challenge-btn" type="button">Run route challenge</button>
+<div id="challenge" class="note">Not run yet.</div>
 
 <footer>
 <p>Sources: deterministic scoring (always) &middot; Muse Spark summary
@@ -108,7 +114,8 @@ brief (<code>muse-wonder</code> live, <code>deterministic</code> offline)
 &middot; Muse Image illustration (<code>muse-image</code> live,
 <code>unavailable</code> offline) &middot; open weights
 (<code>setup-required</code> until a runner is configured) &middot; what-if
-planner (Wonder assumptions, deterministic rescoring).</p>
+planner (Wonder assumptions, deterministic rescoring) &middot; route
+challenge (advisory critiques, ranking authoritative).</p>
 </footer>
 
 <script>
@@ -250,6 +257,45 @@ document.getElementById("ow-ask-spark-btn").addEventListener("click",
   () => askRunner("spark-open", "ow-ask-spark"));
 document.getElementById("ow-ask-glimmer-btn").addEventListener("click",
   () => askRunner("glimmer", "ow-ask-glimmer"));
+document.getElementById("challenge-btn").addEventListener("click", async () => {
+  const el = document.getElementById("challenge");
+  el.textContent = "Running route challenge\u2026 this can take minutes.";
+  try {
+    const demo = await getJSON("/demo/north-sea-storm/challenge?models=spark-open,glimmer");
+    el.textContent = "";
+    demo.summary.forEach(s => {
+      const p = document.createElement("p");
+      p.textContent = s.label + ": " + s.agreements + "/" + s.schema_valid +
+        " agree with the ranking (valid " + s.schema_valid + "/" + s.cases +
+        "), " + (s.total_tokens === null ? "tokens n/a" : s.total_tokens +
+        " tokens") + ", " + (s.avg_latency_ms === null ? "latency n/a" :
+        "avg " + s.avg_latency_ms + " ms") + ".";
+      el.appendChild(p);
+    });
+    const table = document.createElement("table");
+    const head = document.createElement("tr");
+    ["Case", "Model", "Schema valid", "Agrees", "Latency ms", "Tokens"].forEach(t => {
+      const th = document.createElement("th");
+      th.textContent = t;
+      head.appendChild(th);
+    });
+    table.appendChild(head);
+    demo.results.forEach(r => {
+      const tr = document.createElement("tr");
+      const tokens = (r.usage && r.usage.total_tokens !== null &&
+        r.usage.total_tokens !== undefined) ? String(r.usage.total_tokens) : "n/a";
+      [r.case_id, r.model, String(r.schema_valid),
+       r.agrees_with_ranking === null ? "n/a" : String(r.agrees_with_ranking),
+       r.latency_ms === null ? "n/a" : String(r.latency_ms), tokens].forEach(v => {
+        const td = document.createElement("td");
+        td.textContent = v;
+        tr.appendChild(td);
+      });
+      table.appendChild(tr);
+    });
+    el.appendChild(table);
+  } catch (e) { el.textContent = String(e); }
+});
 loadDemo().catch(e => { document.getElementById("modes").textContent = String(e); });
 loadSummary();
 loadWeather();

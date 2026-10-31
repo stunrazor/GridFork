@@ -6,6 +6,7 @@ import openweights_client
 from grid_page import render_grid_page
 from orchestrator import (
     VISION_DEFAULT_IMAGE_URL,
+    run_challenge,
     run_demo,
     run_demo_with_brief,
     run_demo_with_image,
@@ -67,6 +68,15 @@ def north_sea_storm_openweights_ask(model: str = "spark-open"):
 def north_sea_storm_whatif(q: str = ""):
     try:
         return run_whatif(q)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@app.get("/demo/north-sea-storm/challenge")
+def north_sea_storm_challenge(models: str = "spark-open,glimmer"):
+    keys = [m.strip() for m in (models or "").split(",") if m.strip()]
+    try:
+        return run_challenge(keys or ["spark-open", "glimmer"])
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 

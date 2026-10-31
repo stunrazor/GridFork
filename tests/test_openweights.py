@@ -72,6 +72,23 @@ def test_configured_runner_lists_served_models(monkeypatch):
     assert status["served_models"] == ["meta-models/Muse-Spark-Open-816B-A42B-NVFP4"]
 
 
+def test_models_listing_sends_provider_key_when_set(monkeypatch):
+    monkeypatch.setenv("SPARK_OPEN_BASE_URL", "https://provider.example/v1")
+    monkeypatch.setenv("SPARK_OPEN_API_KEY", "provider-key")
+    captured = {}
+
+    def fake_get(url, headers=None, timeout=None):
+        captured["headers"] = headers
+        return _ok_listing(["meta-models/Muse-Spark-Open-816B-A42B"])
+
+    monkeypatch.setattr(openweights_client.httpx, "get", fake_get)
+    status = openweights_client.runner_status("spark-open")
+    assert status["reachable"] is True
+    assert captured["headers"] == {
+        "Authorization": "Bearer " + os.environ["SPARK_OPEN_API_KEY"]
+    }
+
+
 def test_dead_runner_reports_unreachable(monkeypatch):
     monkeypatch.setenv("GLIMMER_BASE_URL", "http://localhost:11434/v1")
 
