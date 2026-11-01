@@ -171,6 +171,24 @@ def test_air_falls_back_labeled_when_call_fails(monkeypatch):
     result = live_air.fetch_corridor_traffic()
     assert result["source"] == "synthetic-fallback"
     assert result["live"] is False
+    assert result["detail"] == "ConnectError"
+
+
+def test_air_fallback_detail_reports_http_status(monkeypatch):
+    _set_phase2_env(monkeypatch)
+
+    def denied_post(*args, **kwargs):
+        request = httpx.Request("POST", live_air.TOKEN_URL)
+        return httpx.Response(401, request=request)
+
+    def denied_get(*args, **kwargs):
+        raise AssertionError("must not query states without a token")
+
+    monkeypatch.setattr(httpx, "post", denied_post)
+    monkeypatch.setattr(httpx, "get", denied_get)
+    result = live_air.fetch_corridor_traffic()
+    assert result["source"] == "synthetic-fallback"
+    assert result["detail"] == "HTTPStatusError 401"
 
 
 def test_road_setup_required_without_key(monkeypatch):

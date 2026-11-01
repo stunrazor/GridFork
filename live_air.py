@@ -79,11 +79,22 @@ def fetch_corridor_traffic(timeout: float = 10.0) -> dict:
             "airborne_osl": counts["osl"],
             "observed_at": datetime.fromtimestamp(observed, tz=timezone.utc).isoformat(),
         }
-    except Exception:
+    except Exception as exc:
         return {
             "source": "synthetic-fallback",
             "live": False,
             "airborne_ams": None,
             "airborne_osl": None,
             "observed_at": None,
+            # Failure class only (never URLs, headers, or bodies) so a
+            # production fallback stays diagnosable without leaking secrets.
+            "detail": _failure_detail(exc),
         }
+
+
+def _failure_detail(exc: Exception) -> str:
+    """One-line failure class for a fallback readout; secret-free."""
+    status = getattr(getattr(exc, "response", None), "status_code", None)
+    if status is not None:
+        return f"{type(exc).__name__} {status}"
+    return type(exc).__name__
