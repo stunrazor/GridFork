@@ -58,6 +58,9 @@ def test_setup_state_names_repo_and_serve_hint():
 
 def test_configured_runner_lists_served_models(monkeypatch):
     monkeypatch.setenv("SPARK_OPEN_BASE_URL", "http://localhost:30000/v1")
+    # Hermetic without a key: a leaked provider key would switch the client
+    # onto the headers path this local-runner double does not model.
+    monkeypatch.delenv("SPARK_OPEN_API_KEY", raising=False)
     captured = {}
 
     def fake_get(url, timeout=None):

@@ -9,7 +9,10 @@ import json
 from pathlib import Path
 
 import image_client
+import live_air
 import live_marine
+import live_rail
+import live_road
 import live_weather
 import openweights_client
 import sam_client
@@ -566,13 +569,17 @@ def build_live_scenario() -> tuple[dict, dict, dict, dict]:
 
 
 def run_live_snapshot() -> dict:
-    """Rank the live snapshot: measured seas through the same engine.
+    """Rank the live snapshot: measured conditions through the same engine.
 
     Identical scoring and ranking code as :func:`run_demo`; only the sea
-    inputs may be measured. Fully offline this equals the baseline demo
-    with every sea field marked synthetic-fallback.
+    inputs (Phase 1) and the air/road/rail inputs (Phase 2) may be
+    measured. Fully offline with no Phase 2 keys this equals the baseline
+    demo exactly, with every sea field marked synthetic-fallback and each
+    Phase 2 layer reporting setup-required.
     """
     scenario, provenance, marine, wind = build_live_scenario()
+    air, road, rail = fetch_phase2_layers()
+    apply_phase2_layers(scenario, provenance, air, road, rail)
     findings = collect_findings(scenario)
     options = build_options(findings, scenario["baseline"]["storm_delay_hours_if_waiting"])
     return {
@@ -582,7 +589,96 @@ def run_live_snapshot() -> dict:
         "label": scenario["label"],
         "marine": marine,
         "wind": wind,
+        "air": air,
+        "road": road,
+        "rail": rail,
         "provenance": provenance,
         "findings": findings,
         "ranked_options": score_options(options),
     }
+
+
+# Phase 2 live data: measured air/road/rail conditions drive those slices
+# through these explicit rules, aligned with each agent's own threshold
+# (available below 12h delay, degraded at 12h+). Costs, on-time
+# probabilities, and confidences stay synthetic estimates — no free
+# real-time source exists — and provenance says so per field. Layers
+# without a configured key leave their slices byte-identical, exactly
+# like the offline Phase 1 path.
+def _observed_traffic_to_air_delay(airborne_total: int) -> int | None:
+    """Map observed AMS+OSL traffic to air delay hours.
+
+    Returns None when nothing is airborne: zero traffic is ambiguous
+    (night ops vs coverage gap), so the engine declines to estimate and
+    the synthetic delay stands.
+    """
+    if airborne_total >= 10:
+        return 4
+    if airborne_total >= 1:
+        return 8
+    return None
+
+
+def _congestion_to_road_delay(worst_ratio: float) -> int:
+    """Map worst current/free-flow speed ratio to road delay hours."""
+    if worst_ratio >= 0.75:
+        return 6
+    if worst_ratio >= 0.5:
+        return 10
+    return 14
+
+
+def _disruptions_to_rail_delay(active: int, rotterdam: int) -> int:
+    """Map NS active-disruption counts to rail delay hours."""
+    if rotterdam >= 1:
+        return 12
+    if active >= 1:
+        return 8
+    return 4
+
+
+def fetch_phase2_layers() -> tuple[dict, dict, dict]:
+    """Fetch the Phase 2 live layers: (air, road, rail) readouts."""
+    return (
+        live_air.fetch_corridor_traffic(),
+        live_road.fetch_corridor_congestion(),
+        live_rail.fetch_network_disruptions(),
+    )
+
+
+def apply_phase2_layers(
+    scenario: dict, provenance: dict, air: dict, road: dict, rail: dict
+) -> None:
+    """Apply live Phase 2 readouts to a scenario in place.
+
+    Only readouts with ``live: True`` touch their slice; setup-required
+    and fallback layers leave values and provenance exactly as they were.
+    """
+    if air.get("live"):
+        air_slice = scenario["modes"]["air"]
+        air_slice["airborne_ams"] = air["airborne_ams"]
+        air_slice["airborne_osl"] = air["airborne_osl"]
+        provenance["air"]["airborne_ams"] = "measured"
+        provenance["air"]["airborne_osl"] = "measured"
+        delay = _observed_traffic_to_air_delay(
+            air["airborne_ams"] + air["airborne_osl"]
+        )
+        if delay is not None:
+            air_slice["delay_hours"] = delay
+            provenance["air"]["delay_hours"] = "estimated-from-conditions"
+    if road.get("live"):
+        road_slice = scenario["modes"]["road"]
+        road_slice["worst_congestion_ratio"] = road["worst_ratio"]
+        road_slice["delay_hours"] = _congestion_to_road_delay(road["worst_ratio"])
+        provenance["road"]["worst_congestion_ratio"] = "measured"
+        provenance["road"]["delay_hours"] = "estimated-from-conditions"
+    if rail.get("live"):
+        rail_slice = scenario["modes"]["rail"]
+        rail_slice["active_disruptions"] = rail["active_count"]
+        rail_slice["rotterdam_disruptions"] = rail["rotterdam_count"]
+        rail_slice["delay_hours"] = _disruptions_to_rail_delay(
+            rail["active_count"], rail["rotterdam_count"]
+        )
+        provenance["rail"]["active_disruptions"] = "measured"
+        provenance["rail"]["rotterdam_disruptions"] = "measured"
+        provenance["rail"]["delay_hours"] = "estimated-from-conditions"

@@ -79,8 +79,11 @@ the deterministic engine recomputes the ranking. Runs on demand.</p>
 
 <h2>Live snapshot</h2>
 <p class="note">Phase 1 real data: measured North Sea waves and Rotterdam wind
-drive the sea leg through the same engine. Costs and probabilities stay
-synthetic estimates; provenance is shown per field. Runs on demand.</p>
+drive the sea leg through the same engine. Phase 2 air, road, and rail layers
+(OpenSky traffic, TomTom congestion, NS disruptions) join in when their free
+keys are set; otherwise those legs stay synthetic and report setup-required.
+Costs and probabilities stay synthetic estimates; provenance is shown per
+field. Runs on demand.</p>
 <button id="live-btn" type="button">Run live snapshot</button>
 <p id="live" class="note">Not run yet.</p>
 
@@ -125,7 +128,8 @@ brief (<code>muse-wonder</code> live, <code>deterministic</code> offline)
 <code>unavailable</code> offline) &middot; open weights
 (<code>setup-required</code> until a runner is configured) &middot; what-if
 planner (Wonder assumptions, deterministic rescoring) &middot; route
-challenge (advisory critiques, ranking authoritative).</p>
+challenge (advisory critiques, ranking authoritative) &middot; Phase 2
+air/road/rail (<code>setup-required</code> until free keys are set).</p>
 </footer>
 
 <script>
@@ -181,6 +185,12 @@ document.getElementById("live-btn").addEventListener("click", async () => {
       "; sea " + sea.status + " +" + sea.delay_hours + "h" +
       " [waves " + snap.provenance.sea.wave_height_m +
       ", delay " + snap.provenance.sea.delay_hours + "]" +
+      "; air " + snap.air.source +
+      (snap.air.live ? " " + (snap.air.airborne_ams + snap.air.airborne_osl) + " airborne" : "") +
+      "; road " + snap.road.source +
+      (snap.road.live ? " worst ratio " + snap.road.worst_ratio : "") +
+      "; rail " + snap.rail.source +
+      (snap.rail.live ? " " + snap.rail.active_count + " active" : "") +
       "; top pick now " + top.option_id + " at score " + top.score + ".";
   } catch (e) { el.textContent = String(e); }
 });
