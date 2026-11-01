@@ -672,7 +672,7 @@ def _disruptions_to_rail_delay(active: int, severe: int) -> int:
 def fetch_phase2_layers() -> tuple[dict, dict, dict]:
     """Fetch the Phase 2 live layers: (air, road, rail) readouts."""
     return (
-        live_air.fetch_corridor_traffic(),
+        live_air.fetch_air_traffic(),
         live_road.fetch_corridor_congestion(),
         live_rail.fetch_rail_disruptions(),
     )

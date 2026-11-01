@@ -161,6 +161,120 @@ def test_air_ignores_on_ground_contacts(monkeypatch):
     assert result["airborne_osl"] == 0
 
 
+def _adsb_response(aircraft):
+    return httpx.Response(
+        200,
+        json={"ac": aircraft, "total": len(aircraft), "now": OPEN_SKY_TIME},
+        request=httpx.Request("GET", "https://api.adsb.lol/v2/x"),
+    )
+
+
+def _ac(alt_baro=10000, flight="KLM123"):
+    aircraft = {"hex": "abc123", "flight": flight, "lat": 52.3, "lon": 4.7}
+    if alt_baro is not None:
+        aircraft["alt_baro"] = alt_baro
+    return aircraft
+
+
+def test_adsb_live_counts_airborne_per_airport(monkeypatch):
+    captured = []
+
+    def fake_get(url, params=None, timeout=None):
+        captured.append(str(url))
+        if "4.76" in str(url):
+            return _adsb_response(
+                [_ac(12000), _ac(8000), _ac(0), _ac(None)]
+            )
+        return _adsb_response([_ac(15000)])
+
+    monkeypatch.setattr(httpx, "get", fake_get)
+    result = live_air.fetch_adsb_traffic()
+    assert result["source"] == "adsb-lol"
+    assert result["live"] is True
+    assert result["airborne_ams"] == 2  # ground-level and unknown excluded
+    assert result["airborne_osl"] == 1
+    assert len(captured) == 2
+
+
+def test_adsb_falls_back_labeled_when_call_fails(monkeypatch):
+    def error_get(*args, **kwargs):
+        raise httpx.ConnectError("offline")
+
+    monkeypatch.setattr(httpx, "get", error_get)
+    result = live_air.fetch_adsb_traffic()
+    assert result["source"] == "synthetic-fallback"
+    assert result["live"] is False
+    assert result["detail"] == "ConnectError"
+
+
+def test_air_uses_keyless_adsb_without_credentials(monkeypatch):
+    _clear_phase2_env(monkeypatch)
+    monkeypatch.setattr(
+        httpx, "get", lambda *a, **k: _adsb_response([_ac()])
+    )
+    result = live_air.fetch_air_traffic()
+    assert result["source"] == "adsb-lol"
+    assert result["live"] is True
+
+
+def test_air_prefers_opensky_over_adsb(monkeypatch):
+    _set_phase2_env(monkeypatch)
+    monkeypatch.setattr(
+        httpx,
+        "post",
+        lambda url, data=None, timeout=None: httpx.Response(
+            200,
+            json={"access_token": "prefer-opensky-sample"},
+            request=httpx.Request("POST", live_air.TOKEN_URL),
+        ),
+    )
+
+    def fake_get(url, params=None, headers=None, timeout=None):
+        assert "adsb.lol" not in str(url), "must not touch adsb.lol"
+        return _states_response([_state("ok1")])
+
+    monkeypatch.setattr(httpx, "get", fake_get)
+    result = live_air.fetch_air_traffic()
+    assert result["source"] == "opensky"
+
+
+def test_air_falls_through_to_adsb_when_opensky_fails(monkeypatch):
+    _set_phase2_env(monkeypatch)
+
+    def error_post(*args, **kwargs):
+        raise httpx.ConnectError("opensky unreachable")
+
+    def fake_get(url, params=None, headers=None, timeout=None):
+        assert "adsb.lol" in str(url)
+        return _adsb_response([_ac(), _ac()])
+
+    monkeypatch.setattr(httpx, "post", error_post)
+    monkeypatch.setattr(httpx, "get", fake_get)
+    result = live_air.fetch_air_traffic()
+    assert result["source"] == "adsb-lol"
+    assert result["airborne_ams"] == 2
+
+
+def test_snapshot_adsb_live_drives_air_leg(monkeypatch):
+    _clear_phase2_env(monkeypatch)
+
+    def fake_get(url, params=None, headers=None, timeout=None):
+        text = str(url)
+        if "marine-api" in text:
+            return _ok_marine(0.4)
+        if "api.open-meteo" in text:
+            return _ok_wind(45.0)
+        assert "adsb.lol" in text
+        return _adsb_response([_ac() for _ in range(6)])
+
+    monkeypatch.setattr(httpx, "get", fake_get)
+    body = run_live_snapshot()
+    air = next(f for f in body["findings"] if f["mode"] == "air")
+    assert air["delay_hours"] == 4  # 6 + 6 airborne across both boxes
+    assert body["air"]["source"] == "adsb-lol"
+    assert body["provenance"]["air"]["airborne_ams"] == "measured"
+
+
 def test_air_falls_back_labeled_when_call_fails(monkeypatch):
     _set_phase2_env(monkeypatch)
 
@@ -447,15 +561,15 @@ def test_snapshot_unconfigured_matches_baseline_plus_setup_states(monkeypatch):
     def error_http(*args, **kwargs):
         raise httpx.ConnectError("offline")
 
-    # Keyless layers (sea, Entur rail) attempt and fall back labeled;
-    # keyed layers report setup-required without any call.
+    # Keyless layers (sea, adsb.lol air, Entur rail) attempt and fall
+    # back labeled; keyed layers report setup-required without any call.
     monkeypatch.setattr(httpx, "get", error_http)
     monkeypatch.setattr(httpx, "post", error_http)
     body = run_live_snapshot()
     baseline = run_demo()
     assert body["findings"] == baseline["findings"]
     assert body["ranked_options"] == baseline["ranked_options"]
-    assert body["air"]["source"] == "setup-required"
+    assert body["air"]["source"] == "synthetic-fallback"
     assert body["road"]["source"] == "setup-required"
     assert body["rail"]["source"] == "synthetic-fallback"
     assert body["provenance"]["air"]["delay_hours"] == "synthetic"

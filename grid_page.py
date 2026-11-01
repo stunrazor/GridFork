@@ -80,9 +80,9 @@ the deterministic engine recomputes the ranking. Runs on demand.</p>
 <h2>Live snapshot</h2>
 <p class="note">Phase 1 real data: measured North Sea waves and Rotterdam wind
 drive the sea leg through the same engine. Phase 2 air, road, and rail layers
-(OpenSky traffic, TomTom congestion plus incidents and routed transit,
-rail disruptions via NS, DB, or keyless Entur) join the snapshot; keyed
-layers without keys stay synthetic and report setup-required.
+(OpenSky/adsb.lol traffic, TomTom congestion plus incidents and routed
+transit, rail disruptions via NS, DB, or keyless Entur) join the snapshot;
+keyed layers without keys stay synthetic and report setup-required.
 Costs and probabilities stay synthetic estimates; provenance is shown per
 field. Runs on demand.</p>
 <button id="live-btn" type="button">Run live snapshot</button>
