@@ -29,10 +29,11 @@ quantified reroutes on Cost, Time Saved, On-Time Probability, and Confidence.
   through an explicit documented rule; costs and probabilities stay
   synthetic estimates, and every field carries a provenance label.
 - Phase 2 real data: the same snapshot adds air (OpenSky Network traffic
-  near AMS/OSL), road (TomTom flow ratios on three corridor samples), and
-  rail (NS active-disruption counts) legs through explicit documented
-  rules. Each needs its own free key; unconfigured layers report
-  `setup-required` and leave their synthetic values untouched.
+  near AMS/OSL), road (TomTom flow ratios plus incident closures and a
+  routed truck transit on the corridor), and rail (NS active-disruption
+  counts) legs through explicit documented rules. Each needs its own
+  free key; unconfigured layers report `setup-required` and leave their
+  synthetic values untouched.
 
 ## Endpoints
 
@@ -75,10 +76,13 @@ endpoint still works on deterministic fallbacks. Tests run offline:
 - Phase 2 keys (all free): OpenSky needs `OPENSKY_CLIENT_ID` plus
   `OPENSKY_CLIENT_SECRET` from an OAuth2 client at opensky-network.org;
   TomTom needs `TOMTOM_API_KEY` from developer.tomtom.com (no payment
-  method); NS needs `NS_API_KEY` from apiportal.ns.nl (sent as the
-  subscription-key header). Without a key that layer reports
-  `setup-required` and makes no network call; keys stay in the
-  environment, never in the repo.
+  method; enable the Traffic and Routing products on the key); NS needs
+  `NS_API_KEY` from apiportal.ns.nl (sent as the subscription-key
+  header), or DB Timetables needs `DB_CLIENT_ID` plus `DB_API_KEY`
+  from developer.deutschebahn.com — rail uses NS when set, else DB,
+  else keyless Entur (Oslo S departures, no account). Without a key a
+  keyed layer reports `setup-required` and makes no network call; keys
+  stay in the environment, never in the repo.
 - Vision uses reference imagery, not a live Rotterdam feed.
 - The optional Meta Models grid section needs `META_MODEL_API_KEY` for
   Wonder/Image (paid calls, run on demand only) and a runner for open

@@ -628,9 +628,41 @@ def _congestion_to_road_delay(worst_ratio: float) -> int:
     return 14
 
 
-def _disruptions_to_rail_delay(active: int, rotterdam: int) -> int:
-    """Map NS active-disruption counts to rail delay hours."""
-    if rotterdam >= 1:
+def _incidents_to_road_floor(closures: int, majors: int) -> int:
+    """Map incident counts to a delay floor; incidents never lower delay."""
+    if closures >= 1:
+        return 14
+    if majors >= 1:
+        return 12
+    return 0
+
+
+def _road_incident_floor(road: dict) -> int:
+    """Incident delay floor, applied only when corroborated.
+
+    Raw incident counts cover whole metro areas, so a closure floors the
+    road leg only when congestion or routed delay shows its effect;
+    otherwise the counts stay advisory context. Live-learned: free flow
+    plus hundreds of metro closures must not degrade the corridor.
+    """
+    incidents = road.get("incidents")
+    if not incidents:
+        return 0
+    route = road.get("route") or {}
+    corroborated = (
+        road["worst_ratio"] < 0.75 or route.get("traffic_delay_hours", 0) > 0
+    )
+    if not corroborated:
+        return 0
+    return _incidents_to_road_floor(incidents["closures"], incidents["majors"])
+
+
+def _disruptions_to_rail_delay(active: int, severe: int) -> int:
+    """Map unified rail disruption counts to rail delay hours.
+
+    Severe means Rotterdam mentions for NS, cancellations for DB.
+    """
+    if severe >= 1:
         return 12
     if active >= 1:
         return 8
@@ -642,7 +674,7 @@ def fetch_phase2_layers() -> tuple[dict, dict, dict]:
     return (
         live_air.fetch_corridor_traffic(),
         live_road.fetch_corridor_congestion(),
-        live_rail.fetch_network_disruptions(),
+        live_rail.fetch_rail_disruptions(),
     )
 
 
@@ -669,16 +701,33 @@ def apply_phase2_layers(
     if road.get("live"):
         road_slice = scenario["modes"]["road"]
         road_slice["worst_congestion_ratio"] = road["worst_ratio"]
-        road_slice["delay_hours"] = _congestion_to_road_delay(road["worst_ratio"])
+        delay = _congestion_to_road_delay(road["worst_ratio"])
+        if road.get("incidents"):
+            incidents = road["incidents"]
+            road_slice["incident_count"] = incidents["count"]
+            road_slice["closure_count"] = incidents["closures"]
+            delay = max(delay, _road_incident_floor(road))
+            provenance["road"]["incident_count"] = "measured"
+            provenance["road"]["closure_count"] = "measured"
+        if road.get("route"):
+            route = road["route"]
+            road_slice["distance_km"] = route["distance_km"]
+            road_slice["transit_hours"] = route["transit_hours"]
+            road_slice["traffic_delay_hours"] = route["traffic_delay_hours"]
+            delay = max(delay, round(route["traffic_delay_hours"]))
+            provenance["road"]["distance_km"] = "measured"
+            provenance["road"]["transit_hours"] = "measured"
+            provenance["road"]["traffic_delay_hours"] = "measured"
+        road_slice["delay_hours"] = delay
         provenance["road"]["worst_congestion_ratio"] = "measured"
         provenance["road"]["delay_hours"] = "estimated-from-conditions"
     if rail.get("live"):
         rail_slice = scenario["modes"]["rail"]
         rail_slice["active_disruptions"] = rail["active_count"]
-        rail_slice["rotterdam_disruptions"] = rail["rotterdam_count"]
+        rail_slice["severe_disruptions"] = rail["severe_count"]
         rail_slice["delay_hours"] = _disruptions_to_rail_delay(
-            rail["active_count"], rail["rotterdam_count"]
+            rail["active_count"], rail["severe_count"]
         )
         provenance["rail"]["active_disruptions"] = "measured"
-        provenance["rail"]["rotterdam_disruptions"] = "measured"
+        provenance["rail"]["severe_disruptions"] = "measured"
         provenance["rail"]["delay_hours"] = "estimated-from-conditions"

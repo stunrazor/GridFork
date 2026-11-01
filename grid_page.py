@@ -80,8 +80,9 @@ the deterministic engine recomputes the ranking. Runs on demand.</p>
 <h2>Live snapshot</h2>
 <p class="note">Phase 1 real data: measured North Sea waves and Rotterdam wind
 drive the sea leg through the same engine. Phase 2 air, road, and rail layers
-(OpenSky traffic, TomTom congestion, NS disruptions) join in when their free
-keys are set; otherwise those legs stay synthetic and report setup-required.
+(OpenSky traffic, TomTom congestion plus incidents and routed transit,
+rail disruptions via NS, DB, or keyless Entur) join the snapshot; keyed
+layers without keys stay synthetic and report setup-required.
 Costs and probabilities stay synthetic estimates; provenance is shown per
 field. Runs on demand.</p>
 <button id="live-btn" type="button">Run live snapshot</button>
@@ -188,7 +189,11 @@ document.getElementById("live-btn").addEventListener("click", async () => {
       "; air " + snap.air.source +
       (snap.air.live ? " " + (snap.air.airborne_ams + snap.air.airborne_osl) + " airborne" : "") +
       "; road " + snap.road.source +
-      (snap.road.live ? " worst ratio " + snap.road.worst_ratio : "") +
+      (snap.road.live ? " worst ratio " + snap.road.worst_ratio +
+        (snap.road.incidents ? ", " + snap.road.incidents.count +
+          " incidents (" + snap.road.incidents.closures + " closures)" : "") +
+        (snap.road.route ? ", routed " + snap.road.route.transit_hours + "h" : "")
+        : "") +
       "; rail " + snap.rail.source +
       (snap.rail.live ? " " + snap.rail.active_count + " active" : "") +
       "; top pick now " + top.option_id + " at score " + top.score + ".";
