@@ -1,8 +1,6 @@
 """Tests for the North Sea storm end-to-end demo."""
 
-from fastapi.testclient import TestClient
-
-from main import app, north_sea_storm
+from main import north_sea_storm
 from orchestrator import build_options, collect_findings, load_scenario, run_demo, score_options
 
 EXPECTED_ORDER = ["rail-reroute", "road-reroute", "air-lift", "sea-wait"]
@@ -67,9 +65,8 @@ def test_endpoint_function_returns_demo_shape():
 
 
 def test_endpoint_serves_ranked_demo():
-    client = TestClient(app)
-    response = client.get("/demo/north-sea-storm")
-    assert response.status_code == 200
-    body = response.json()
+    # Direct call, like every other endpoint test: Starlette's TestClient
+    # needs a localhost socketpair, which sandboxes forbid.
+    body = north_sea_storm()
     assert body["synthetic"] is True
     assert [o["option_id"] for o in body["ranked_options"]] == EXPECTED_ORDER
