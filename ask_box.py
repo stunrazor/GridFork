@@ -45,7 +45,15 @@ document.getElementById("{prefix}-ask-btn").addEventListener("click", async () =
   el.textContent = "Asking…";
   try {{
     const res = await fetch("{ASK_PATH}?q=" + encodeURIComponent(q){extra});
-    if (!res.ok) {{ el.textContent = "Request failed: HTTP " + res.status + "."; return; }}
+    if (!res.ok) {{
+      let detail = res.status;
+      try {{
+        const err = await res.json();
+        detail = res.status + ": " + (err.detail || "request failed");
+      }} catch (_) {{}}
+      el.textContent = "Ask failed (" + detail + "). Try again.";
+      return;
+    }}
     const body = await res.json();
     const ans = body.answer;
     const fa = body.fastest_alternative;
@@ -57,7 +65,7 @@ document.getElementById("{prefix}-ask-btn").addEventListener("click", async () =
     if (body.snapshot && typeof window["{prefix}AskSnapshot"] === "function") {{
       window["{prefix}AskSnapshot"](body.snapshot);
     }}
-  }} catch (e) {{ el.textContent = "Request failed."; }}
+  }} catch (e) {{ el.textContent = "Request failed (network). Check your connection and click Ask again."; }}
 }});
 const {prefix}AskTalk = document.getElementById("{prefix}-ask-talk");
 const {prefix}AskVoice = document.getElementById("{prefix}-ask-voice");

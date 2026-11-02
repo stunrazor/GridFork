@@ -545,6 +545,8 @@ def test_ask_box_shows_grounding():
     assert "grounded_on" in script
     assert "fa ?" in script
     assert 'window["probeAskSnapshot"]' in script
+    assert "Ask failed (" in script
+    assert "click Ask again" in script
     assert "any two places" in render_ask_box("probe")
 
 
