@@ -276,7 +276,7 @@ async function rtChallenge(mock) {
     el.appendChild(table);
   } catch (e) { el.textContent = String(e); }
 }
-document.getElementById("rt-live-values-btn").addEventListener("click", async () => {
+async function rtLoadLiveValues() {
   const el = document.getElementById("rt-live-values-note");
   el.textContent = "Fetching live snapshot\u2026";
   try {
@@ -313,8 +313,10 @@ document.getElementById("rt-live-values-btn").addEventListener("click", async ()
       body.appendChild(tr);
     });
     el.textContent = "Showing live measured values. Schematic stays storm-scenario.";
-  } catch (e) { el.textContent = String(e); }
-});
+  } catch (e) { el.textContent = "Live fetch failed (" + e + "); showing storm scenario values."; }
+}
+document.getElementById("rt-live-values-btn").addEventListener("click", rtLoadLiveValues);
+rtLoadLiveValues();
 document.getElementById("rt-live-btn").addEventListener("click", () => rtChallenge(false));
 document.getElementById("rt-mock-btn").addEventListener("click", () => rtChallenge(true));
 document.getElementById("rt-illus-btn").addEventListener("click", async () => {
@@ -409,8 +411,8 @@ def render_routes_page(demo: dict) -> str:
         f'<div class="kpi"><div class="k">Time saved</div><div class="v" id="rt-kpi-saved">{top["time_saved_hours"]}h</div></div>\n'
         f'<div class="kpi"><div class="k">On-time</div><div class="v" id="rt-kpi-otp">{top["on_time_probability"]}</div></div>\n'
         "</div>\n"
-        '<p><button id="rt-live-values-btn" type="button">Show live values</button>\n'
-        '<span id="rt-live-values-note" class="note">Showing storm scenario values.</span></p>\n'
+        '<p><button id="rt-live-values-btn" type="button">Refresh live values</button>\n'
+        '<span id="rt-live-values-note" class="note">Loading live values…</span></p>\n'
         '<div class="hero">\n'
         f'<h2 id="rt-hero-title">Recommended: {top["option_id"]} &mdash; {top["title"]}</h2>\n'
         f'<p class="nums" id="rt-hero-nums">Score {top["score"]} &middot; ${top["cost_usd"]} '

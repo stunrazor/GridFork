@@ -32,3 +32,13 @@ def test_routes_live_values_button_updates_hero_kpis_table():
     for target in ("rt-hero-title", "rt-kpi-score", "rt-comp-body"):
         assert target in script
     assert "Schematic stays storm-scenario" in script
+
+
+def test_routes_loads_live_values_on_open():
+    html = render_routes_page(run_demo())
+    assert "Refresh live values" in html
+    assert "Loading live values" in html
+    script = html.split("<script>", 1)[1]
+    assert "async function rtLoadLiveValues()" in script
+    assert "\nrtLoadLiveValues();" in script
+    assert script.count("/demo/north-sea-storm/live") == 1
