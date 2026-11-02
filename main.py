@@ -18,6 +18,7 @@ from orchestrator import (
     run_demo,
     run_demo_with_brief,
     run_demo_with_image,
+    run_ask,
     run_demo_with_openweights,
     run_demo_with_summary,
     run_demo_with_vision,
@@ -81,6 +82,14 @@ def north_sea_storm_openweights(model: str = "spark-open"):
 @app.get("/demo/north-sea-storm/openweights/ask")
 def north_sea_storm_openweights_ask(model: str = "spark-open"):
     return run_demo_with_openweights(model)
+
+
+@app.get("/demo/north-sea-storm/ask")
+def north_sea_storm_ask(q: str = ""):
+    try:
+        return run_ask(q)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
 
 
 @app.get("/demo/north-sea-storm/whatif")

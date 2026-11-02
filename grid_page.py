@@ -6,6 +6,8 @@ block and the Meta Models section run on demand so a page load never
 triggers a live vision, Wonder, Image, or runner call.
 """
 
+import ask_box
+
 
 def render_grid_page() -> str:
     """Return the full grid page as a self-contained HTML document."""
@@ -48,7 +50,7 @@ def render_grid_page() -> str:
 </head>
 <body>
 <h1>GridFork live grid &mdash; North Sea storm, Rotterdam &rarr; Oslo</h1>
-<p class="sub">Every route. One grid. Zero blind spots. Synthetic demo data.
+<p class="sub">Every route. One grid. Zero blind spots. Legs measured live; costs stay synthetic estimates.
 Open the <a href="/demo/north-sea-storm/brief-card">shareable incident brief</a>,
 the <a href="/demo/storm-lab">Storm Scenario Lab</a>, the
 <a href="/demo/routes">route briefing</a>, or <a href="/">home</a>.</p>
@@ -118,7 +120,7 @@ and tokens. Runs on demand; local inference can take minutes.</p>
 <button id="challenge-btn" type="button">Run route challenge</button>
 <div id="challenge" class="note">Not run yet.</div>
 
-<footer>
+""" + ask_box.render_ask_box("grid") + """<footer>
 <p>Sources: deterministic scoring (always) &middot; Muse Spark summary
 (<code>source: muse-spark</code> live, <code>deterministic</code> offline) &middot;
 SAM 3.1 segmentation (<code>source: sam-3.1</code> live,
@@ -341,6 +343,6 @@ loadDemo().catch(e => { document.getElementById("modes").textContent = String(e)
 loadSummary();
 loadWeather();
 </script>
-</body>
+""" + ask_box.render_ask_script("grid") + """</body>
 </html>
 """

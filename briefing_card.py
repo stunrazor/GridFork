@@ -7,6 +7,8 @@ illustrative, never evidence — SAM segmentation remains the
 vision/evidence step.
 """
 
+import ask_box
+
 _CSS = """
   body { font-family: -apple-system, "Segoe UI", Verdana, sans-serif;
          margin: 2rem auto; max-width: 52rem; padding: 0 1rem;
@@ -34,7 +36,7 @@ _CSS = """
   footer { margin-top: 2rem; font-size: 0.8rem; color: #444;
            border-top: 1px solid #ccc; padding-top: 0.5rem; }
   code { background: #f2f2f2; padding: 0 0.25rem; }
-  @media print { button { display: none; } }
+  @media print { button, input { display: none; } }
 """
 
 _SCRIPT = """
@@ -130,11 +132,14 @@ def render_brief_card(demo: dict) -> str:
         '<button id="illus-btn" type="button">Generate illustration</button>\n'
         '<div id="illustration" class="note">Not generated yet. Paid Muse Image '
         "call; runs on demand only.</div>\n"
-        "<footer>\n<p>Sources: deterministic scoring (always) &middot; "
+        + ask_box.render_ask_box("brief")
+        + "<footer>\n<p>Sources: deterministic scoring (always) &middot; "
         "illustration via <code>/demo/north-sea-storm/image</code> "
         "(<code>source: muse-image</code> live, "
         "<code>unavailable</code> offline) &middot; SAM 3.1 segmentation is "
-        "the vision/evidence step. Synthetic demo data throughout.</p>\n</footer>\n"
+        "the vision/evidence step. Costs and probabilities are synthetic "
+        "estimates.</p>\n</footer>\n"
         + _SCRIPT
+        + ask_box.render_ask_script("brief")
         + "</body>\n</html>\n"
     )

@@ -6,6 +6,7 @@ refresh, SAM, what-if, voice, bench, illustration) runs only on an explicit
 click or button hold. Color always pairs with a text label, never alone.
 """
 
+import ask_box
 import spark_client
 
 _CSS = """
@@ -357,7 +358,7 @@ def render_routes_page(demo: dict) -> str:
         '<header class="route-head">\n'
         "<h1>GridFork route briefing &mdash; Rotterdam &rarr; Oslo</h1>\n"
         f'<p class="sub"><span class="pill {sea["status"]}">STORM DISRUPTION</span> '
-        '<span class="badge live">SYNTHETIC DEMO DATA</span> '
+        '<span class="badge live">LIVE DATA &middot; LABELED ESTIMATES</span> '
         '<span class="badge">DETERMINISTIC SCORING</span> '
         '<a href="/">Home</a></p>\n'
         "</header>\n"
@@ -423,11 +424,17 @@ def render_routes_page(demo: dict) -> str:
         '<button id="rt-illus-btn" type="button">Generate illustration</button>\n'
         '<div id="rt-illustration" class="note">Not generated yet.</div>\n'
         "</div>\n"
+        '<div class="panel">\n'
+        + ask_box.render_ask_box("rt")
+        + "</div>\n"
         "</div>\n"
         "<footer>\n<p>Sources: deterministic scoring (always) &middot; brief "
         "summary (Spark live, deterministic offline) &middot; SAM 3.1 "
         "segmentation (live, unavailable offline) &middot; Wonder assumptions "
         "&middot; Voice transcription &middot; open weights (local, "
         "setup-required, or mock) &middot; Muse Image illustration. "
-        "Synthetic demo data throughout.</p>\n</footer>\n" + _SCRIPT + "</body>\n</html>\n"
+        "Costs and probabilities are synthetic demo data; legs measured with "
+        "provenance.</p>\n</footer>\n" + _SCRIPT
+        + ask_box.render_ask_script("rt")
+        + "</body>\n</html>\n"
     )

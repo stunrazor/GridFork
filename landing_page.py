@@ -38,7 +38,7 @@ _PAGE = """<!DOCTYPE html>
 <body>
 <h1>GridFork</h1>
 <p class="sub">Every route. One grid. Zero blind spots.
-<span class="badge">SYNTHETIC DEMO DATA</span></p>
+<span class="badge">LIVE DATA &middot; LABELED ESTIMATES</span></p>
 
 <div class="cards">
 <div class="card">
@@ -69,7 +69,7 @@ optional AI-generated illustration. Print-friendly.</p>
 
 <footer>
 <p>All live inference across these views runs on demand only &mdash; nothing
-calls a model on page load. Synthetic demo data throughout.</p>
+calls a model on page load. Costs and probabilities stay synthetic estimates; legs measured live.</p>
 </footer>
 </body>
 </html>

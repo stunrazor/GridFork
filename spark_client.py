@@ -84,6 +84,66 @@ def fetch_spark_summary(prompt: str, api_key: str, timeout: float = 30.0) -> str
     return str(response.json()["choices"][0]["message"]["content"])
 
 
+def build_ask_prompt(question: str, findings: list[dict], ranked_options: list[dict]) -> str:
+    """Build a grounded Q&A prompt over the ranking and findings.
+
+    The model answers only from the data below; anything else — other
+    incidents, live prices, advice beyond this ranking — is out of scope.
+    """
+    lines = [
+        "Answer the question below about this North Sea storm freight reroute.",
+        "Use ONLY the ranking and findings given; answer in at most four sentences.",
+        "If the question needs data not present here, or is not about this",
+        'incident and ranking, start the answer with "Out of scope:" and say why.',
+        "",
+        "Ranking:",
+    ]
+    for option in ranked_options:
+        lines.append(
+            f"Rank {option['rank']}: {option['option_id']} "
+            f"({option['title']}), score {option['score']}, "
+            f"cost ${option['cost_usd']}, "
+            f"saves {option['time_saved_hours']}h, "
+            f"on-time {option['on_time_probability']}, "
+            f"confidence {option['confidence']}."
+        )
+    lines.append("Findings:")
+    for finding in findings:
+        lines.append(
+            f"{finding['mode']}: {finding['status']}, "
+            f"+{finding['delay_hours']}h delay, cost ${finding['cost_usd']}, "
+            f"on-time {finding['on_time_probability']}. {finding['summary']}"
+        )
+    lines.append(f"Question: {question}")
+    return "\n".join(lines)
+
+
+def answer_question(question: str, findings: list[dict], ranked_options: list[dict]) -> dict:
+    """Answer one question via Muse Spark, or report setup/unavailable."""
+    api_key = os.environ.get(API_KEY_ENV_VAR)
+    if not api_key:
+        return {
+            "source": "setup-required",
+            "model": MODEL_ID,
+            "text": None,
+            "detail": (
+                f"No API key: set {API_KEY_ENV_VAR} to ask {MODEL_ID}."
+            ),
+        }
+    try:
+        text = fetch_spark_summary(
+            build_ask_prompt(question, findings, ranked_options), api_key
+        )
+    except Exception:
+        return {
+            "source": "unavailable",
+            "model": MODEL_ID,
+            "text": None,
+            "detail": "Muse Spark call failed; no answer produced.",
+        }
+    return {"source": "muse-spark", "model": MODEL_ID, "text": text}
+
+
 def generate_summary(ranked_options: list[dict]) -> dict:
     """Return a summary dict, preferring Muse Spark with deterministic fallback."""
     prompt = build_summary_prompt(ranked_options)

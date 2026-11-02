@@ -6,6 +6,8 @@ explicit click or button hold. The microphone is used only while the
 push-to-talk button is held; nothing is recorded automatically.
 """
 
+import ask_box
+
 _PAGE = """<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -36,7 +38,7 @@ _PAGE = """<!DOCTYPE html>
 </head>
 <body>
 <h1>Storm Scenario Lab</h1>
-<p class="sub">Optional workbench beside the live grid. Synthetic demo data.
+<p class="sub">Optional workbench beside the live grid. Live data with labeled synthetic estimates.
 Every live call below runs only when you click. <a href="/">Home</a> &middot;
 <a href="/demo/grid">Back to the grid</a>.</p>
 
@@ -67,7 +69,7 @@ SAM 3.1 segmentation.</p>
 <button id="lab-illus-btn" type="button">Generate illustration</button>
 <div id="lab-illustration" class="note">Not generated yet.</div>
 
-<footer>
+""" + ask_box.render_ask_box("lab", "4. Ask GridFork") + """<footer>
 <p>Sources: deterministic scoring (always) &middot; Muse Wonder assumptions
 (<code>muse-wonder</code> live, <code>deterministic</code> offline) &middot;
 Muse Voice transcription (<code>muse-voice-transcribe</code> live,
@@ -287,7 +289,7 @@ document.getElementById("lab-illus-btn").addEventListener("click", async () => {
   } catch (e) { el.textContent = String(e); }
 });
 </script>
-</body>
+""" + ask_box.render_ask_script("lab") + """</body>
 </html>
 """
 

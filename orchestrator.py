@@ -266,6 +266,31 @@ def apply_whatif_assumptions(scenario: dict, assumptions: list[dict]) -> dict:
     return updated
 
 
+MAX_ASK_CHARS = 500
+
+
+def run_ask(question: str) -> dict:
+    """Answer one question about the incident via Muse Spark.
+
+    The model answers only from the deterministic ranking and findings
+    (see :func:`spark_client.build_ask_prompt`); without a key or on
+    failure the answer reports ``setup-required`` / ``unavailable`` with
+    no invented text. Raises ValueError on a blank or overlong question.
+    """
+    asked = (question or "").strip()
+    if not asked:
+        raise ValueError("Ask a question about this incident and ranking.")
+    if len(asked) > MAX_ASK_CHARS:
+        raise ValueError(f"Question exceeds the {MAX_ASK_CHARS}-character cap.")
+    demo = run_demo()
+    return {
+        "question": asked,
+        "answer": spark_client.answer_question(
+            asked, demo["findings"], demo["ranked_options"]
+        ),
+    }
+
+
 def run_whatif(question: str) -> dict:
     """Answer a what-if question with before/after deterministic rankings.
 
