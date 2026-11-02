@@ -43,33 +43,33 @@ _PAGE = """<!DOCTYPE html>
 <div class="cards">
 <div class="card">
 <h2>Route briefing <span class="badge">NEWEST</span></h2>
-<p>Hero recommendation, KPIs, route comparison with a data-drawn schematic,
-and Evidence / What-if / Bench / Visual stages.</p>
+<p>Top pick with KPIs, full route comparison, and a data-drawn schematic.
+One click refreshes every number from live conditions.</p>
 <a class="btn" href="/demo/routes">Open route briefing</a>
 </div>
 <div class="card">
 <h2>Live grid</h2>
-<p>The observable demo interface: specialist findings, ranked reroutes,
-Spark summary, SAM check, and live wind.</p>
+<p>Specialist findings and ranked reroutes with Spark narrative and SAM
+visual check. One click re-renders from the live snapshot.</p>
 <a class="btn" href="/demo/grid">Open live grid</a>
 </div>
 <div class="card">
 <h2>Storm Scenario Lab</h2>
-<p>Workbench: typed or push-to-talk what-if input, open-weight comparison
-with mock preview, on-demand illustration.</p>
+<p>Worldwide snapshot runner for any corridor, what-if planner with voice
+input, open-weight comparison, and on-demand illustration.</p>
 <a class="btn" href="/demo/storm-lab">Open scenario lab</a>
 </div>
 <div class="card">
 <h2>Incident brief</h2>
-<p>Shareable one-page brief: recommendation, impacts, ranking, and an
-optional AI-generated illustration. Print-friendly.</p>
+<p>Shareable one-page brief: recommendation, impacts, ranked reroutes,
+and an optional illustration. Print-friendly.</p>
 <a class="btn" href="/demo/north-sea-storm/brief-card">Open incident brief</a>
 </div>
 </div>
 
 <footer>
-<p>All live inference across these views runs on demand only &mdash; nothing
-calls a model on page load. Costs and probabilities stay synthetic estimates; legs measured live.</p>
+<p>Ask GridFork tops every view. All live inference runs on demand only &mdash;
+nothing calls a model on page load. Costs and probabilities stay synthetic estimates; legs measured live.</p>
 </footer>
 </body>
 </html>
