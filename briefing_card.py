@@ -66,10 +66,15 @@ async function briefLoadLive() {
   const el = document.getElementById("brief-live-note");
   el.textContent = "Fetching live snapshot…";
   try {
-    const snap = await getJSON("/demo/north-sea-storm/live");
-    const top = snap.ranked_options[0];
-    const run = snap.ranked_options[1];
-    document.getElementById("brief-rec-title").textContent =
+    briefAskSnapshot(await getJSON("/demo/north-sea-storm/live"));
+    el.textContent = "Showing live measured values.";
+  } catch (e) { el.textContent = "Live fetch failed (" + e + "); showing storm scenario values."; }
+}
+function briefAskSnapshot(snap) {
+  const el = document.getElementById("brief-live-note");
+  const top = snap.ranked_options[0];
+  const run = snap.ranked_options[1];
+  document.getElementById("brief-rec-title").textContent =
       top.option_id + " — " + top.title;
     document.getElementById("brief-rec-nums").textContent =
       "Score " + top.score + " · $" + top.cost_usd +
@@ -111,8 +116,7 @@ async function briefLoadLive() {
       });
       body.appendChild(tr);
     });
-    el.textContent = "Showing live measured values.";
-  } catch (e) { el.textContent = "Live fetch failed (" + e + "); showing storm scenario values."; }
+    el.textContent = "Tables show the asked corridor (" + snap.label + ").";
 }
 document.getElementById("brief-live-btn").addEventListener("click", briefLoadLive);
 briefLoadLive();

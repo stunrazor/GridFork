@@ -457,6 +457,7 @@ def guidance_response(
         "answer": {"source": "guidance", "text": text, "detail": None},
         "grounded_on": None,
         "fastest_alternative": None,
+        "snapshot": None,
     }
 
 
@@ -518,6 +519,7 @@ def run_ask(question: str, snapshot: dict | None = None) -> dict:
         "answer": answer,
         "grounded_on": grounded_on,
         "fastest_alternative": fastest,
+        "snapshot": snapshot,
     }
 
 

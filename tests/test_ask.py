@@ -468,6 +468,7 @@ def test_endpoint_grounds_place_question_worldwide(monkeypatch):
     assert body["grounded_on"] == snap["label"]
     assert body["fastest_alternative"]["option_id"] == "road-leg"
     assert body["answer"]["source"] == "setup-required"
+    assert body["snapshot"]["label"] == snap["label"]
 
 
 def test_endpoint_guides_when_places_unknown(monkeypatch):
@@ -508,6 +509,7 @@ def test_endpoint_guides_when_no_places_named():
     assert body["fastest_alternative"] is None
     assert body["answer"]["source"] == "guidance"
     assert "where from and where to" in body["answer"]["text"]
+    assert body["snapshot"] is None
 
 
 def test_endpoint_never_grounds_demo(monkeypatch):
@@ -542,4 +544,12 @@ def test_ask_box_shows_grounding():
     script = render_ask_script("probe")
     assert "grounded_on" in script
     assert "fa ?" in script
+    assert 'window["probeAskSnapshot"]' in script
     assert "any two places" in render_ask_box("probe")
+
+
+def test_all_views_define_ask_snapshot_hook():
+    assert "function gridAskSnapshot(snap)" in render_grid_page()
+    assert "function rtAskSnapshot(snap)" in render_routes_page(run_demo())
+    assert "function labAskSnapshot(snap)" in render_storm_lab()
+    assert "function briefAskSnapshot(snap)" in render_brief_card(run_demo())

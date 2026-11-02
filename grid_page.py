@@ -166,6 +166,11 @@ function renderDemo(demo) {
     "<tr><th>#</th><th>Option</th><th>Score</th><th>Cost</th>" +
     "<th>Saved</th><th>On-time</th><th>Conf.</th></tr>" + rows;
 }
+function gridAskSnapshot(snap) {
+  renderDemo(snap);
+  document.getElementById("live").textContent =
+    "Tables show the asked corridor (" + snap.label + "); use the button for storm/live views.";
+}
 async function loadDemo() {
   try {
     renderDemo(await getJSON("/demo/north-sea-storm/live"));

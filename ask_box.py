@@ -54,6 +54,9 @@ document.getElementById("{prefix}-ask-btn").addEventListener("click", async () =
       " (" + fa.total_hours + "h total). " : "";
     el.textContent = ans.text ? ctx + first + "[" + ans.source + "] " + ans.text
       : ctx + first + "[" + ans.source + "] " + ans.detail;
+    if (body.snapshot && typeof window["{prefix}AskSnapshot"] === "function") {{
+      window["{prefix}AskSnapshot"](body.snapshot);
+    }}
   }} catch (e) {{ el.textContent = "Request failed."; }}
 }});
 const {prefix}AskTalk = document.getElementById("{prefix}-ask-talk");

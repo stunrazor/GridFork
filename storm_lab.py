@@ -327,10 +327,14 @@ function labLegDetail(leg) {
 }
 async function labRunSnapshot() {
   const el = document.getElementById("lab-snapshot-out");
-  el.textContent = "Fetching live snapshot\\u2026";
+  el.textContent = "Fetching live snapshot…";
   try {
-    const snap = await getJSON(labSnapshotURL());
-    el.textContent = "";
+    labAskSnapshot(await getJSON(labSnapshotURL()));
+  } catch (e) { el.textContent = String(e); }
+}
+function labAskSnapshot(snap) {
+  const el = document.getElementById("lab-snapshot-out");
+  el.textContent = "";
     const head = document.createElement("p");
     head.textContent = snap.label + " (" + snap.distance_km + "km). Fastest alternate: " +
       snap.fastest_alternative.option_id + " (" + snap.fastest_alternative.total_hours + "h total).";
@@ -376,7 +380,6 @@ async function labRunSnapshot() {
       ranked.appendChild(tr);
     });
     el.appendChild(ranked);
-  } catch (e) { el.textContent = String(e); }
 }
 document.getElementById("lab-snapshot-btn").addEventListener("click", labRunSnapshot);
 labRunSnapshot();

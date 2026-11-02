@@ -283,10 +283,15 @@ async function rtLoadLiveValues() {
   const el = document.getElementById("rt-live-values-note");
   el.textContent = "Fetching live snapshot\u2026";
   try {
-    const snap = await getJSON("/demo/north-sea-storm/live");
-    const top = snap.ranked_options[0];
-    const run = snap.ranked_options[1];
-    document.getElementById("rt-hero-title").textContent =
+    rtAskSnapshot(await getJSON("/demo/north-sea-storm/live"));
+    el.textContent = "Showing live measured values. Schematic stays storm-scenario.";
+  } catch (e) { el.textContent = "Live fetch failed (" + e + "); showing storm scenario values."; }
+}
+function rtAskSnapshot(snap) {
+  const el = document.getElementById("rt-live-values-note");
+  const top = snap.ranked_options[0];
+  const run = snap.ranked_options[1];
+  document.getElementById("rt-hero-title").textContent =
       "Recommended: " + top.option_id + " \u2014 " + top.title;
     document.getElementById("rt-hero-nums").textContent =
       "Score " + top.score + " \u00b7 $" + top.cost_usd +
@@ -315,8 +320,7 @@ async function rtLoadLiveValues() {
       });
       body.appendChild(tr);
     });
-    el.textContent = "Showing live measured values. Schematic stays storm-scenario.";
-  } catch (e) { el.textContent = "Live fetch failed (" + e + "); showing storm scenario values."; }
+    el.textContent = "Tables show the asked corridor (" + snap.label + "). Schematic stays storm-scenario.";
 }
 document.getElementById("rt-live-values-btn").addEventListener("click", rtLoadLiveValues);
 rtLoadLiveValues();
