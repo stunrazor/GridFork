@@ -308,6 +308,14 @@ function rtAskSnapshot(snap) {
       " \u00b7 saves " + top.time_saved_hours + "h" +
       " \u00b7 on-time " + top.on_time_probability +
       " \u00b7 confidence " + top.confidence;
+    const second = snap.ranked_options[1];
+    document.getElementById("rt-hero-second").textContent =
+      "Runner-up: " + second.option_id + " \u2014 " + second.title;
+    document.getElementById("rt-hero-second-nums").textContent =
+      "Score " + second.score + " \u00b7 $" + second.cost_usd +
+      " \u00b7 saves " + second.time_saved_hours + "h" +
+      " \u00b7 on-time " + second.on_time_probability +
+      " \u00b7 confidence " + second.confidence;
     const costGap = run.cost_usd - top.cost_usd;
     const timeGap = top.time_saved_hours - run.time_saved_hours;
     document.getElementById("rt-tradeoff").textContent =
@@ -416,6 +424,7 @@ def render_routes_page(demo: dict) -> str:
     """Return the route briefing as a self-contained HTML document."""
     ranked = demo["ranked_options"]
     top = ranked[0]
+    second = ranked[1]
     rows = "".join(
         f'<tr class="{"top" if o["rank"] == 1 else ""}"><td>{o["rank"]}</td>'
         f'<td>{o["option_id"]}</td><td>{o["score"]}</td>'
@@ -455,6 +464,11 @@ def render_routes_page(demo: dict) -> str:
         f'&middot; saves {top["time_saved_hours"]}h '
         f'&middot; on-time {top["on_time_probability"]} '
         f'&middot; confidence {top["confidence"]}</p>\n'
+        f'<h2 id="rt-hero-second">Runner-up: {second["option_id"]} &mdash; {second["title"]}</h2>\n'
+        f'<p class="nums" id="rt-hero-second-nums">Score {second["score"]} &middot; ${second["cost_usd"]} '
+        f'&middot; saves {second["time_saved_hours"]}h '
+        f'&middot; on-time {second["on_time_probability"]} '
+        f'&middot; confidence {second["confidence"]}</p>\n'
         f'<p id="rt-tradeoff">{_tradeoff_line(ranked)}</p>\n'
         "</div>\n"
         '<div class="main-grid">\n'

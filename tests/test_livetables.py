@@ -37,7 +37,7 @@ def test_routes_live_values_button_updates_hero_kpis_table():
     assert "rt-comp-body" in html
     script = html.split("<script>", 1)[1]
     assert script.count("/demo/north-sea-storm/live") == 1
-    for target in ("rt-hero-title", "rt-kpi-score", "rt-comp-body"):
+    for target in ("rt-hero-title", "rt-hero-second", "rt-kpi-score", "rt-comp-body"):
         assert target in script
     assert 'id="rt-schem-sea-bar"' in html
     assert 'id="rt-schem-sea-text"' in html

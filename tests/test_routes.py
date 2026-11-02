@@ -23,6 +23,8 @@ def test_hero_recommends_top_route_with_all_five_numbers():
     assert "42h" in html
     assert "0.7" in html
     assert "0.72" in html
+    assert "Runner-up: road-reroute" in html
+    assert "38h" in html
 
 
 def test_kpi_strip_and_schematic_are_data_driven_and_labeled():
