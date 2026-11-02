@@ -76,7 +76,8 @@ endpoint still works on deterministic fallbacks. Tests run offline:
 - Scenario data is synthetic and labeled as such throughout.
 - Phase 2 keys (all free): OpenSky needs `OPENSKY_CLIENT_ID` plus
   `OPENSKY_CLIENT_SECRET` from an OAuth2 client at opensky-network.org
-  (else keyless adsb.lol answers);
+  (else keyless adsb.lol answers, optionally via an `ADSB_BASE_URL`
+  relay on filtered networks);
   TomTom needs `TOMTOM_API_KEY` from developer.tomtom.com (no payment
   method; enable the Traffic and Routing products on the key); NS needs
   `NS_API_KEY` from apiportal.ns.nl (sent as the subscription-key

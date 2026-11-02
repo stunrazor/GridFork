@@ -19,7 +19,9 @@ TOKEN_URL = (
 STATES_URL = "https://opensky-network.org/api/states/all"
 # Keyless backup: community ADS-B aggregator, no account. Used when OpenSky
 # has no credentials or is unreachable (e.g. filtered egress networks).
-ADSB_URL = "https://api.adsb.lol/v2/lat/{lat}/lon/{lon}/dist/{nm}"
+# ADSB_BASE_URL may point at a relay (e.g. a Cloudflare Worker) that serves
+# the same paths; otherwise the public API is used directly.
+ADSB_DEFAULT_BASE = "https://api.adsb.lol"
 ADSB_AMS = (52.31, 4.76)
 ADSB_OSL = (60.19, 11.10)
 ADSB_RADIUS_NM = 25
@@ -120,14 +122,23 @@ def _count_adsb_airborne(aircraft: list) -> int:
     return airborne
 
 
+def _adsb_base() -> str:
+    """Base URL for adsb.lol calls: relay override or the public API."""
+    return (
+        (os.environ.get("ADSB_BASE_URL") or "").strip().rstrip("/")
+        or ADSB_DEFAULT_BASE
+    )
+
+
 def fetch_adsb_traffic(timeout: float = 10.0) -> dict:
     """Return live AMS/OSL traffic counts from adsb.lol, or a fallback."""
     try:
+        base = _adsb_base()
         counts = {}
         observed = None
         for tag, (lat, lon) in (("ams", ADSB_AMS), ("osl", ADSB_OSL)):
             response = httpx.get(
-                ADSB_URL.format(lat=lat, lon=lon, nm=ADSB_RADIUS_NM),
+                f"{base}/v2/lat/{lat}/lon/{lon}/dist/{ADSB_RADIUS_NM}",
                 timeout=timeout,
             )
             response.raise_for_status()
@@ -135,8 +146,9 @@ def fetch_adsb_traffic(timeout: float = 10.0) -> dict:
             counts[tag] = _count_adsb_airborne(payload.get("ac"))
             observed = payload.get("now", observed)
         try:
-            observed_at = datetime.fromtimestamp(observed, tz=timezone.utc).isoformat()
-        except (TypeError, ValueError):
+            stamp = observed / 1000 if observed > 1e11 else observed
+            observed_at = datetime.fromtimestamp(stamp, tz=timezone.utc).isoformat()
+        except (TypeError, ValueError, OverflowError, OSError):
             observed_at = None
         return {
             "source": "adsb-lol",

@@ -161,10 +161,10 @@ def test_air_ignores_on_ground_contacts(monkeypatch):
     assert result["airborne_osl"] == 0
 
 
-def _adsb_response(aircraft):
+def _adsb_response(aircraft, now=OPEN_SKY_TIME):
     return httpx.Response(
         200,
-        json={"ac": aircraft, "total": len(aircraft), "now": OPEN_SKY_TIME},
+        json={"ac": aircraft, "total": len(aircraft), "now": now},
         request=httpx.Request("GET", "https://api.adsb.lol/v2/x"),
     )
 
@@ -194,6 +194,38 @@ def test_adsb_live_counts_airborne_per_airport(monkeypatch):
     assert result["airborne_ams"] == 2  # ground-level and unknown excluded
     assert result["airborne_osl"] == 1
     assert len(captured) == 2
+
+
+def test_adsb_uses_base_url_override(monkeypatch):
+    monkeypatch.setenv("ADSB_BASE_URL", "https://relay.example/")
+    captured = []
+
+    def fake_get(url, params=None, timeout=None):
+        captured.append(str(url))
+        return _adsb_response([_ac()])
+
+    monkeypatch.setattr(httpx, "get", fake_get)
+    result = live_air.fetch_adsb_traffic()
+    assert result["live"] is True
+    assert captured == [
+        "https://relay.example/v2/lat/52.31/lon/4.76/dist/25",
+        "https://relay.example/v2/lat/60.19/lon/11.1/dist/25",
+    ]
+
+
+def test_adsb_handles_millisecond_timestamps(monkeypatch):
+    # Live adsb.lol returns "now" in milliseconds; naive seconds parsing
+    # overflows and must not sink the readout.
+    monkeypatch.setattr(
+        httpx,
+        "get",
+        lambda *a, **k: _adsb_response([_ac()], now=OPEN_SKY_TIME * 1000),
+    )
+    result = live_air.fetch_adsb_traffic()
+    assert result["live"] is True
+    assert result["observed_at"] == (
+        datetime.fromtimestamp(OPEN_SKY_TIME, tz=timezone.utc).isoformat()
+    )
 
 
 def test_adsb_falls_back_labeled_when_call_fails(monkeypatch):
