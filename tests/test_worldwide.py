@@ -324,6 +324,18 @@ def test_endpoint_unknown_corridor_is_400():
         world_snapshot(corridor="atlantis")
 
 
+def test_endpoint_geocode_failure_is_502(monkeypatch):
+    from fastapi import HTTPException
+
+    def down(origin, dest, timeout=10.0):
+        raise httpx.ConnectError("nominatim timed out")
+
+    monkeypatch.setattr(snapshot_mod, "snapshot_for_places", down)
+    with pytest.raises(HTTPException) as exc_info:
+        world_snapshot(from_place="Alpha", to="Beta")
+    assert exc_info.value.status_code == 502
+
+
 def test_lab_worldwide_section():
     from storm_lab import render_storm_lab
 

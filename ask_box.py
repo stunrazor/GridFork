@@ -19,9 +19,10 @@ def render_ask_box(prefix: str, heading: str = "Ask GridFork") -> str:
     which pages append after their main script block.
     """
     return f"""<h2>{heading}</h2>
-<p class="note">Ask about traffic, disruptions, costs, or the ranking.
+<p class="note">Ask for the fastest route between any two places, anywhere
+in the world &mdash; live traffic, disruptions, costs, and ranking.
 Scenario and why-questions go to Muse Wonder, facts to Muse Spark; each
-question is a paid call and runs on click only.</p>
+answered question is a paid call and runs on click only.</p>
 <input id="{prefix}-ask-input" maxlength="500" value="Which option is cheapest and what does it trade off?">
 <button id="{prefix}-ask-btn" type="button">Ask</button>
 <button id="{prefix}-ask-talk" type="button">Hold to talk</button>
@@ -48,10 +49,11 @@ document.getElementById("{prefix}-ask-btn").addEventListener("click", async () =
     const body = await res.json();
     const ans = body.answer;
     const fa = body.fastest_alternative;
-    const first = "Fastest alternate: " + fa.option_id +
-      " (" + fa.total_hours + "h total). ";
-    el.textContent = ans.text ? first + "[" + ans.source + "] " + ans.text
-      : first + "[" + ans.source + "] " + ans.detail;
+    const ctx = body.grounded_on ? "About " + body.grounded_on + ". " : "";
+    const first = fa ? "Fastest alternate: " + fa.option_id +
+      " (" + fa.total_hours + "h total). " : "";
+    el.textContent = ans.text ? ctx + first + "[" + ans.source + "] " + ans.text
+      : ctx + first + "[" + ans.source + "] " + ans.detail;
   }} catch (e) {{ el.textContent = "Request failed."; }}
 }});
 const {prefix}AskTalk = document.getElementById("{prefix}-ask-talk");

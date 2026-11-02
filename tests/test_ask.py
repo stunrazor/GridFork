@@ -386,3 +386,144 @@ def test_all_views_render_ask_mic():
     assert "rt-ask-talk" in render_routes_page(run_demo())
     assert "lab-ask-talk" in render_storm_lab()
     assert "brief-ask-talk" in render_brief_card(run_demo())
+
+
+PH_Q = (
+    "I am in Baliuag City, Bulacan Philippines, what's the fastest "
+    "route going to Baguio City Philippines?"
+)
+
+
+def test_extract_route_places_finds_philippine_pair():
+    from orchestrator import extract_route_places
+
+    assert extract_route_places(PH_Q) == (
+        "Baliuag City, Bulacan Philippines",
+        "Baguio City Philippines",
+    )
+
+
+def test_extract_route_places_from_to():
+    from orchestrator import extract_route_places
+
+    assert extract_route_places("Fastest freight from Hamburg to Oslo?") == (
+        "Hamburg",
+        "Oslo",
+    )
+    assert extract_route_places("Shipping from Shanghai bound for Los Angeles") == (
+        "Shanghai",
+        "Los Angeles",
+    )
+
+
+def test_extract_route_places_ignores_demo_questions():
+    from orchestrator import extract_route_places
+
+    for question in (
+        "Which option is cheapest?",
+        "How bad is Hamburg road congestion right now?",
+        "What is the sea delay?",
+        "What if Rotterdam closes for six more hours?",
+        "Explain why rail is ranked first.",
+        "Suppose the storm stalls; what changes?",
+        "Switch to Wonder for this one.",
+    ):
+        assert extract_route_places(question) is None
+
+
+def test_endpoint_grounds_place_question_worldwide(monkeypatch):
+    import snapshot as snapshot_mod
+
+    monkeypatch.delenv("META_MODEL_API_KEY", raising=False)
+    seen = {}
+    snap = {
+        "label": "Baliuag City, Bulacan Philippines → Baguio City Philippines",
+        "findings": [],
+        "ranked_options": [],
+        "provenance": {},
+        "marine": {},
+        "wind": {},
+        "air": {},
+        "road": {},
+        "rail": {},
+        "fastest_alternative": {
+            "mode": "road",
+            "option_id": "road-leg",
+            "total_hours": 5.5,
+            "transit_hours": 4.5,
+            "delay_hours": 1,
+        },
+    }
+
+    def fake_places(origin, dest, timeout=10.0):
+        seen["places"] = (origin, dest)
+        return snap
+
+    monkeypatch.setattr(snapshot_mod, "snapshot_for_places", fake_places)
+    body = north_sea_storm_ask(q=PH_Q)
+    assert seen["places"] == (
+        "Baliuag City, Bulacan Philippines",
+        "Baguio City Philippines",
+    )
+    assert body["grounded_on"] == snap["label"]
+    assert body["fastest_alternative"]["option_id"] == "road-leg"
+    assert body["answer"]["source"] == "setup-required"
+
+
+def test_endpoint_guides_when_places_unknown(monkeypatch):
+    import snapshot as snapshot_mod
+
+    def boom(origin, dest, timeout=10.0):
+        raise ValueError("place not found: 'Nowhereville'")
+
+    monkeypatch.setattr(snapshot_mod, "snapshot_for_places", boom)
+    body = north_sea_storm_ask(q="Fastest freight from Nowhereville to Nodestone?")
+    assert body["grounded_on"] is None
+    assert body["fastest_alternative"] is None
+    assert body["answer"]["source"] == "guidance"
+    assert "Nowhereville" in body["answer"]["text"]
+
+
+def test_endpoint_guides_when_geocode_unreachable(monkeypatch):
+    import snapshot as snapshot_mod
+
+    def down(origin, dest, timeout=10.0):
+        raise httpx.ConnectError("nominatim timed out")
+
+    monkeypatch.setattr(snapshot_mod, "snapshot_for_places", down)
+    body = north_sea_storm_ask(q=PH_Q)
+    assert body["grounded_on"] is None
+    assert body["fastest_alternative"] is None
+    assert body["answer"]["source"] == "guidance"
+    assert "Baliuag" in body["answer"]["text"]
+
+
+def test_endpoint_guides_when_no_places_named():
+    body = north_sea_storm_ask(q="Which option is cheapest?")
+    assert body["question"] == "Which option is cheapest?"
+    assert body["routed_to"] == "none"
+    assert body["grounded_on"] is None
+    assert body["fastest_alternative"] is None
+    assert body["answer"]["source"] == "guidance"
+    assert "where from and where to" in body["answer"]["text"]
+
+
+def test_endpoint_never_grounds_demo(monkeypatch):
+    import snapshot as snapshot_mod
+
+    def explode(*args, **kwargs):
+        raise AssertionError("demo grounding must not run")
+
+    monkeypatch.setattr(snapshot_mod, "snapshot_for_places", explode)
+    body = north_sea_storm_ask(q="Why is rail ranked first in Rotterdam?")
+    assert body["grounded_on"] is None
+    assert body["answer"]["source"] == "guidance"
+
+
+def test_ask_box_shows_grounding():
+    from ask_box import render_ask_box, render_ask_script
+
+    script = render_ask_script("probe")
+    assert "grounded_on" in script
+    assert "fa ?" in script
+    assert "any two places" in render_ask_box("probe")

@@ -1,6 +1,7 @@
 import base64
 import binascii
 
+import httpx
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import HTMLResponse
 
@@ -15,6 +16,8 @@ from routes_page import render_routes_page
 from storm_lab import render_storm_lab
 from orchestrator import (
     VISION_DEFAULT_IMAGE_URL,
+    extract_route_places,
+    guidance_response,
     run_challenge,
     run_demo,
     run_demo_with_brief,
@@ -25,6 +28,7 @@ from orchestrator import (
     run_demo_with_vision,
     run_live_snapshot,
     run_whatif,
+    validate_ask_question,
 )
 
 app = FastAPI(title="GridFork")
@@ -93,19 +97,30 @@ def north_sea_storm_ask(
     to: str = "",
 ):
     try:
-        snap = _ask_snapshot(corridor, from_place, to)
-        return run_ask(q, snapshot=snap)
+        if corridor:
+            return run_ask(
+                q, snapshot=snapshot_mod.snapshot_for_corridor(corridor)
+            )
+        if from_place and to:
+            return run_ask(
+                q, snapshot=snapshot_mod.snapshot_for_places(from_place, to)
+            )
+        # Location grounding is worldwide only and comes only from the
+        # user: an extracted pair grounds live, anything else gets free
+        # guidance instead of a guessed location. Never the demo.
+        asked = validate_ask_question(q)
+        places = extract_route_places(asked)
+        if not places:
+            return guidance_response(asked)
+        try:
+            snap = snapshot_mod.snapshot_for_places(*places)
+        except (ValueError, httpx.HTTPError):
+            return guidance_response(asked, places=places)
+        return run_ask(asked, snapshot=snap)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
-
-
-def _ask_snapshot(corridor: str, from_place: str, to: str):
-    """Worldwide grounding for Ask, or None for the demo incident."""
-    if corridor:
-        return snapshot_mod.snapshot_for_corridor(corridor)
-    if from_place and to:
-        return snapshot_mod.snapshot_for_places(from_place, to)
-    return None
+    except httpx.HTTPError as exc:
+        raise HTTPException(status_code=502, detail=f"geocoding failed: {exc}")
 
 
 @app.get("/snapshot")
@@ -123,6 +138,8 @@ def world_snapshot(
         raise ValueError("pass ?corridor=<id> or ?from=<place>&to=<place>")
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
+    except httpx.HTTPError as exc:
+        raise HTTPException(status_code=502, detail=f"geocoding failed: {exc}")
 
 
 @app.get("/demo/north-sea-storm/whatif")

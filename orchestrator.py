@@ -6,6 +6,7 @@ the scores and ranking are always identical.
 
 import copy
 import json
+import re
 from pathlib import Path
 
 import image_client
@@ -304,6 +305,82 @@ def route_ask(question: str) -> tuple[str, str]:
     return "spark", "default factual routing"
 
 
+# Origin/destination markers for place extraction. Both must match, so
+# bare mentions ("switch to Wonder", "delays to costs") never trigger a
+# worldwide lookup; unresolvable pairs fall back to demo grounding when
+# geocoding raises.
+_ROUTE_ORIGIN_MARKERS = (
+    " from ",
+    " i am in ",
+    " i'm in ",
+    " im in ",
+    " starting at ",
+    " starting from ",
+    " shipping from ",
+    " leaving from ",
+    " departing from ",
+)
+_ROUTE_DEST_MARKERS = (
+    " going to ",
+    " heading to ",
+    " headed to ",
+    " bound for ",
+    " to ",
+)
+_ROUTE_CLAUSE_CUT = re.compile(
+    r",\s*what\b|\bwhat's\b|\bwhat\s+(is|are|if)\b"
+    r"|\bhow\b|\bwhich\b|\bwhy\b|\bwhen\b|\bwhere\b",
+    re.IGNORECASE,
+)
+_ROUTE_END_CUT = re.compile(r"[?!;]")
+_MAX_PLACE_CHARS = 120
+
+
+def _clean_place(raw: str) -> str:
+    """Strip a captured place span to its name."""
+    return raw.strip(" \t\n\r.,;:\"'").strip()
+
+
+def extract_route_places(question: str) -> tuple | None:
+    """Extract an (origin, destination) pair from a question, or None.
+
+    The origin runs from its marker to the destination marker with any
+    trailing question clause cut ("I am in Baliuag, what's fastest going
+    to Baguio" yields the city, not the sentence); the destination runs
+    to the first end punctuation. Overlong or identical spans decline.
+    """
+    text = f" {question or ''} "
+    lowered = text.lower()
+    start, origin_len = -1, 0
+    for marker in _ROUTE_ORIGIN_MARKERS:
+        idx = lowered.find(marker)
+        if idx != -1 and (start == -1 or idx < start):
+            start, origin_len = idx, len(marker)
+    if start == -1:
+        return None
+    origin_end = start + origin_len
+    dest_at, dest_len = -1, 0
+    for marker in _ROUTE_DEST_MARKERS:
+        idx = lowered.find(marker, origin_end)
+        if idx != -1 and (dest_at == -1 or idx < dest_at):
+            dest_at, dest_len = idx, len(marker)
+    if dest_at == -1:
+        return None
+    origin = _clean_place(
+        _ROUTE_CLAUSE_CUT.split(text[origin_end:dest_at], maxsplit=1)[0]
+    )
+    dest = _clean_place(
+        _ROUTE_END_CUT.split(text[dest_at + dest_len:], maxsplit=1)[0]
+    )
+    if not origin or not dest:
+        return None
+    if len(origin) > _MAX_PLACE_CHARS or len(dest) > _MAX_PLACE_CHARS:
+        return None
+    if origin.lower() == dest.lower():
+        return None
+    return (origin, dest)
+
+
 def fastest_alternative(scenario: dict) -> dict:
     """Fastest mode by total journey time (transit plus delay hours).
 
@@ -331,6 +408,49 @@ def fastest_alternative(scenario: dict) -> dict:
     }
 
 
+def validate_ask_question(question: str) -> str:
+    """Strip a question; raises ValueError when blank or overlong."""
+    asked = (question or "").strip()
+    if not asked:
+        raise ValueError("Ask a question about this incident and ranking.")
+    if len(asked) > MAX_ASK_CHARS:
+        raise ValueError(f"Question exceeds the {MAX_ASK_CHARS}-character cap.")
+    return asked
+
+
+GUIDANCE_NO_PLACES = (
+    "Tell me where from and where to — e.g. 'fastest route from "
+    "Baliuag to Baguio' — or ask about the North Sea demo "
+    "(Rotterdam–Oslo)."
+)
+
+
+def guidance_response(asked: str, places: tuple | None = None) -> dict:
+    """Deterministic Ask-shaped reply when no grounding applies.
+
+    Free (no model call): either the question names no places, or the
+    named places could not be resolved. ``fastest_alternative`` is None
+    because there is no corridor to time.
+    """
+    if places:
+        text = (
+            f"I couldn't find {places[0]!r} or {places[1]!r}. Check the "
+            "spelling, or phrase it 'from X to Y'."
+        )
+        reason = "places not found"
+    else:
+        text = GUIDANCE_NO_PLACES
+        reason = "no places named"
+    return {
+        "question": asked,
+        "routed_to": "none",
+        "reason": reason,
+        "answer": {"source": "guidance", "text": text, "detail": None},
+        "grounded_on": None,
+        "fastest_alternative": None,
+    }
+
+
 def run_ask(question: str, snapshot: dict | None = None) -> dict:
     """Answer one question about the incident via Muse Spark.
 
@@ -342,11 +462,7 @@ def run_ask(question: str, snapshot: dict | None = None) -> dict:
     When ``snapshot`` (a worldwide snapshot dict) is given, the answer
     grounds on that corridor instead of the demo incident.
     """
-    asked = (question or "").strip()
-    if not asked:
-        raise ValueError("Ask a question about this incident and ranking.")
-    if len(asked) > MAX_ASK_CHARS:
-        raise ValueError(f"Question exceeds the {MAX_ASK_CHARS}-character cap.")
+    asked = validate_ask_question(question)
     if snapshot is None:
         scenario, provenance, marine, wind, air, road, rail = _snapshot_parts()
         findings = collect_findings(scenario)
@@ -363,6 +479,7 @@ def run_ask(question: str, snapshot: dict | None = None) -> dict:
             "rail": rail,
         }
         fastest = fastest_alternative(scenario)
+        grounded_on = scenario["label"]
     else:
         findings = snapshot["findings"]
         ranked = snapshot["ranked_options"]
@@ -375,6 +492,7 @@ def run_ask(question: str, snapshot: dict | None = None) -> dict:
             "rail": snapshot["rail"],
         }
         fastest = snapshot["fastest_alternative"]
+        grounded_on = snapshot["label"]
     routed_to, reason = route_ask(asked)
     if routed_to == "wonder":
         answer = wonder_client.answer_ask(
@@ -389,6 +507,7 @@ def run_ask(question: str, snapshot: dict | None = None) -> dict:
         "routed_to": routed_to,
         "reason": reason,
         "answer": answer,
+        "grounded_on": grounded_on,
         "fastest_alternative": fastest,
     }
 
