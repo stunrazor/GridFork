@@ -62,6 +62,60 @@ async function getJSON(path) {
   if (!r.ok) throw new Error(path + " -> " + r.status);
   return r.json();
 }
+async function briefLoadLive() {
+  const el = document.getElementById("brief-live-note");
+  el.textContent = "Fetching live snapshot…";
+  try {
+    const snap = await getJSON("/demo/north-sea-storm/live");
+    const top = snap.ranked_options[0];
+    const run = snap.ranked_options[1];
+    document.getElementById("brief-rec-title").textContent =
+      top.option_id + " — " + top.title;
+    document.getElementById("brief-rec-nums").textContent =
+      "Score " + top.score + " · $" + top.cost_usd +
+      " · saves " + top.time_saved_hours + "h" +
+      " · on-time " + top.on_time_probability +
+      " · confidence " + top.confidence;
+    const costGap = run.cost_usd - top.cost_usd;
+    const timeGap = top.time_saved_hours - run.time_saved_hours;
+    document.getElementById("brief-tradeoff").textContent =
+      "Tradeoff vs " + run.option_id + ": top pick " +
+      (costGap >= 0 ? "saves $" + costGap : "costs $" + (-costGap) + " more") +
+      " and " + (timeGap >= 0 ? "saves " + timeGap + "h more" : "saves " + (-timeGap) + "h less") + ".";
+    const impacts = document.getElementById("brief-findings-body");
+    impacts.textContent = "";
+    snap.findings.forEach(f => {
+      const tr = document.createElement("tr");
+      const pill = document.createElement("span");
+      pill.className = "pill " + f.status;
+      pill.textContent = f.status;
+      const tds = [f.mode, null, "+" + f.delay_hours + "h", f.on_time_probability];
+      tds.forEach(v => {
+        const td = document.createElement("td");
+        if (v === null) td.appendChild(pill);
+        else td.textContent = v;
+        tr.appendChild(td);
+      });
+      impacts.appendChild(tr);
+    });
+    const body = document.getElementById("brief-ranking-body");
+    body.textContent = "";
+    snap.ranked_options.forEach(o => {
+      const tr = document.createElement("tr");
+      if (o.rank === 1) tr.className = "top";
+      [o.rank, o.option_id, o.score, "$" + o.cost_usd,
+       o.time_saved_hours + "h", o.on_time_probability, o.confidence].forEach(v => {
+        const td = document.createElement("td");
+        td.textContent = v;
+        tr.appendChild(td);
+      });
+      body.appendChild(tr);
+    });
+    el.textContent = "Showing live measured values.";
+  } catch (e) { el.textContent = "Live fetch failed (" + e + "); showing storm scenario values."; }
+}
+document.getElementById("brief-live-btn").addEventListener("click", briefLoadLive);
+briefLoadLive();
 document.getElementById("illus-btn").addEventListener("click", async () => {
   const el = document.getElementById("illustration");
   el.textContent = "Generating illustration\\u2026";
@@ -124,23 +178,27 @@ def render_brief_card(demo: dict) -> str:
         '<p class="note">Shareable page: print to PDF to distribute.</p>\n'
         + ask_box.render_ask_box("brief")
         + "<h2>Recommendation</h2>\n"
+        '<p><button id="brief-live-btn" type="button">Refresh live values</button>\n'
+        '<span id="brief-live-note" class="note">Loading live values…</span></p>\n'
         '<div class="rec">\n'
-        f'<p><strong>{top["option_id"]}</strong> &mdash; {top["title"]}</p>\n'
-        f'<p>Score {top["score"]} &middot; ${top["cost_usd"]} '
+        f'<p id="brief-rec-title"><strong>{top["option_id"]}</strong> &mdash; {top["title"]}</p>\n'
+        f'<p id="brief-rec-nums">Score {top["score"]} &middot; ${top["cost_usd"]} '
         f'&middot; saves {top["time_saved_hours"]}h '
         f'&middot; on-time {top["on_time_probability"]} '
         f'&middot; confidence {top["confidence"]}</p>\n'
-        f"<p>{_tradeoff_line(demo['ranked_options'])}</p>\n"
+        f"<p id=\"brief-tradeoff\">{_tradeoff_line(demo['ranked_options'])}</p>\n"
         "</div>\n"
         "<h2>Impacts</h2>\n<table>\n"
         "<tr><th>Mode</th><th>Status</th><th>Delay</th><th>On-time</th></tr>\n"
+        '<tbody id="brief-findings-body">\n'
         + findings_rows
-        + "</table>\n"
+        + "</tbody>\n</table>\n"
         "<h2>Ranking</h2>\n<table>\n"
         "<tr><th>#</th><th>Option</th><th>Score</th><th>Cost</th>"
         "<th>Saved</th><th>On-time</th><th>Conf.</th></tr>\n"
+        '<tbody id="brief-ranking-body">\n'
         + ranking_rows
-        + "</table>\n"
+        + "</tbody>\n</table>\n"
         "<h2>Illustration</h2>\n"
         '<p class="label">AI-generated illustration (Muse Image) &mdash; '
         "illustrative only. Not a real port image, map, or evidence. "

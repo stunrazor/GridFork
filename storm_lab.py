@@ -64,13 +64,13 @@ Every live call below runs only when you click. <a href="/">Home</a> &middot;
 
 """ + ask_box.render_ask_box("lab") + """<h2>0. Worldwide snapshot</h2>
 <p class="note">Live four-mode ranking for any corridor: pick a preset or
-type two places. Runs only when you click; Ask above grounds its answers
-in the corridor selected here.</p>
+type two places. Runs the selected corridor on open and on click; Ask
+above grounds its answers in the corridor selected here.</p>
 <select id="lab-corridor">""" + _corridor_options() + """</select>
 <input id="lab-from" placeholder="From (custom place)" style="width: 25%">
 <input id="lab-to" placeholder="To (custom place)" style="width: 25%">
 <button id="lab-snapshot-btn" type="button">Run live snapshot</button>
-<div id="lab-snapshot-out" class="note">Not run yet.</div>
+<div id="lab-snapshot-out" class="note">Loading default corridor…</div>
 
 <h2>1. Scenario question</h2>
 <p class="note">Type a what-if, or hold the talk button to dictate it. The
@@ -325,7 +325,7 @@ function labLegDetail(leg) {
   }
   return (leg.detail || "") + " [" + (leg.live ? "entur" : "estimated") + "]";
 }
-document.getElementById("lab-snapshot-btn").addEventListener("click", async () => {
+async function labRunSnapshot() {
   const el = document.getElementById("lab-snapshot-out");
   el.textContent = "Fetching live snapshot\\u2026";
   try {
@@ -377,7 +377,9 @@ document.getElementById("lab-snapshot-btn").addEventListener("click", async () =
     });
     el.appendChild(ranked);
   } catch (e) { el.textContent = String(e); }
-});
+}
+document.getElementById("lab-snapshot-btn").addEventListener("click", labRunSnapshot);
+labRunSnapshot();
 document.getElementById("lab-illus-btn").addEventListener("click", async () => {
   const el = document.getElementById("lab-illustration");
   el.textContent = "Generating illustration\\u2026";

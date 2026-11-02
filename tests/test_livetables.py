@@ -13,7 +13,15 @@ def test_grid_live_button_rerenders_tables():
     script = render_grid_page().split("<script>", 1)[1]
     assert "function renderDemo(demo)" in script
     assert "renderDemo(snap)" in script
-    assert script.count("/demo/north-sea-storm/live") == 1
+    assert script.count("/demo/north-sea-storm/live") == 2
+
+
+def test_grid_loads_live_on_open():
+    html = render_grid_page()
+    assert "Switch live/storm tables" in html
+    script = html.split("<script>", 1)[1]
+    assert 'renderDemo(await getJSON("/demo/north-sea-storm/live"))' in script
+    assert "let liveOn = true;" in script
 
 
 def test_grid_live_button_toggles_back_to_storm():

@@ -50,6 +50,26 @@ def test_card_generates_illustration_on_demand_only():
     assert "addEventListener" in script
 
 
+def test_card_loads_live_values_on_open():
+    html = _card()
+    for target in (
+        "brief-live-btn",
+        "brief-live-note",
+        "brief-rec-title",
+        "brief-rec-nums",
+        "brief-tradeoff",
+        "brief-findings-body",
+        "brief-ranking-body",
+        "Refresh live values",
+    ):
+        assert target in html
+    script = html.split("<script>", 1)[1]
+    assert "async function briefLoadLive()" in script
+    assert "\nbriefLoadLive();" in script
+    assert script.count("/demo/north-sea-storm/live") == 1
+    assert "innerHTML" not in script
+
+
 def test_card_avoids_banned_framing_words():
     html = _card().lower()
     for word in ("dashboard", "command center", "control tower"):

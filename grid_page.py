@@ -94,9 +94,9 @@ drive the sea leg through the same engine. Phase 2 air, road, and rail layers
 transit, rail disruptions via NS, DB, or keyless Entur) join the snapshot;
 keyed layers without keys stay synthetic and report setup-required.
 Costs and probabilities stay synthetic estimates; provenance is shown per
-field. Runs on demand.</p>
-<button id="live-btn" type="button">Run live snapshot</button>
-<p id="live" class="note">Not run yet.</p>
+field. Loads live on open; the button flips back to the storm scenario.</p>
+<button id="live-btn" type="button">Switch live/storm tables</button>
+<p id="live" class="note">Loading live values…</p>
 
 <h2>Meta Models (optional)</h2>
 <p class="note">On-demand extras. Nothing here runs on page load. Wonder and
@@ -167,7 +167,16 @@ function renderDemo(demo) {
     "<th>Saved</th><th>On-time</th><th>Conf.</th></tr>" + rows;
 }
 async function loadDemo() {
-  renderDemo(await getJSON("/demo/north-sea-storm"));
+  try {
+    renderDemo(await getJSON("/demo/north-sea-storm/live"));
+    liveOn = true;
+    document.getElementById("live").textContent =
+      "Tables show live values; use the button for the storm scenario.";
+  } catch (e) {
+    renderDemo(await getJSON("/demo/north-sea-storm"));
+    document.getElementById("live").textContent =
+      "Live fetch failed; showing storm scenario values.";
+  }
 }
 async function loadSummary() {
   try {
@@ -185,7 +194,7 @@ async function loadWeather() {
       w.wind_kph + " kph" + (w.observed_at ? " at " + w.observed_at : "");
   } catch (e) { document.getElementById("weather").textContent = String(e); }
 }
-let liveOn = false;
+let liveOn = true;
 document.getElementById("live-btn").addEventListener("click", async () => {
   const el = document.getElementById("live");
   el.textContent = liveOn ? "Reloading storm scenario\u2026" : "Fetching live snapshot\u2026";

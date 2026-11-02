@@ -455,3 +455,11 @@ def test_lab_ask_grounds_on_corridor():
     html = render_storm_lab()
     assert "labAskContext()" in html.rsplit("<script>", 1)[1]
     assert "&corridor=" in html
+
+
+def test_lab_runs_snapshot_on_open():
+    from storm_lab import render_storm_lab
+
+    html = render_storm_lab()
+    assert "async function labRunSnapshot()" in html
+    assert "\nlabRunSnapshot();" in html
