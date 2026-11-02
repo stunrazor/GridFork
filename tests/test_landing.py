@@ -25,7 +25,7 @@ def test_landing_links_all_four_views():
         assert f'href="{path}"' in html
     assert "Route briefing" in html
     assert "Live grid" in html
-    assert "Storm Scenario Lab" in html
+    assert "Scenario lab" in html
     assert "Incident brief" in html
 
 

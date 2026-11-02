@@ -72,6 +72,7 @@ async function briefLoadLive() {
 }
 function briefAskSnapshot(snap) {
   const el = document.getElementById("brief-live-note");
+  document.getElementById("brief-corridor").textContent = snap.label;
   const top = snap.ranked_options[0];
   const run = snap.ranked_options[1];
   document.getElementById("brief-rec-title").textContent =
@@ -173,17 +174,18 @@ def render_brief_card(demo: dict) -> str:
         "<!DOCTYPE html>\n"
         '<html lang="en">\n<head>\n<meta charset="utf-8">\n'
         '<meta name="viewport" content="width=device-width, initial-scale=1">\n'
-        "<title>GridFork incident brief &mdash; North Sea storm</title>\n<style>"
+        "<title>GridFork incident brief</title>\n<style>"
         + _CSS
         + "</style>\n</head>\n<body>\n"
-        "<h1>GridFork incident brief &mdash; North Sea storm, Rotterdam &rarr; Oslo</h1>\n"
-        f'<p class="sub">Multi-agent reroute engine across sea, air, road and rail. {demo["label"]} '
+        "<h1>GridFork incident brief</h1>\n"
+        '<p class="sub">Multi-agent reroute engine across sea, air, road and rail. '
         '<a href="/">Home</a>.</p>\n'
         '<p class="note">Shareable page: print to PDF to distribute.</p>\n'
         + ask_box.render_ask_box("brief")
         + "<h2>Recommendation</h2>\n"
         '<p><button id="brief-live-btn" type="button">Refresh live values</button>\n'
-        '<span id="brief-live-note" class="note">Loading live values…</span></p>\n'
+        '<span id="brief-live-note" class="note">Loading live values…</span>\n'
+        f'Showing: <span id="brief-corridor">{demo["label"]}</span></p>\n'
         '<div class="rec">\n'
         f'<p id="brief-rec-title"><strong>{top["option_id"]}</strong> &mdash; {top["title"]}</p>\n'
         f'<p id="brief-rec-nums">Score {top["score"]} &middot; ${top["cost_usd"]} '

@@ -548,6 +548,23 @@ def test_ask_box_shows_grounding():
     assert "any two places" in render_ask_box("probe")
 
 
+def test_headers_show_live_corridor():
+    routes = render_routes_page(run_demo())
+    assert "<h1>GridFork route briefing</h1>" in routes
+    assert 'id="rt-corridor"' in routes
+    assert "function rtSetCorridor(snap)" in routes
+    assert "route briefing &mdash; Rotterdam" not in routes
+    grid = render_grid_page()
+    assert "<h1>GridFork live grid</h1>" in grid
+    assert 'id="grid-corridor"' in grid
+    assert "live grid &mdash; North Sea" not in grid
+    brief = render_brief_card(run_demo())
+    assert "<h1>GridFork incident brief</h1>" in brief
+    assert 'id="brief-corridor"' in brief
+    assert "incident brief &mdash; North Sea" not in brief
+    assert "<h1>GridFork scenario lab</h1>" in render_storm_lab()
+
+
 def test_all_views_define_ask_snapshot_hook():
     assert "function gridAskSnapshot(snap)" in render_grid_page()
     assert "function rtAskSnapshot(snap)" in render_routes_page(run_demo())

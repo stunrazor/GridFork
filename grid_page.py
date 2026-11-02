@@ -16,7 +16,7 @@ def render_grid_page() -> str:
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>GridFork live grid &mdash; North Sea storm</title>
+<title>GridFork live grid</title>
 <style>
   :root { color-scheme: dark; }
   body { font-family: -apple-system, "Segoe UI", Verdana, sans-serif;
@@ -57,7 +57,8 @@ def render_grid_page() -> str:
 </style>
 </head>
 <body>
-<h1>GridFork live grid &mdash; North Sea storm, Rotterdam &rarr; Oslo</h1>
+<h1>GridFork live grid</h1>
+<p class="sub">Showing: <span id="grid-corridor">Loading…</span></p>
 <p class="sub">Multi-agent reroute engine: live traffic, weather &amp; disruption data across sea, air, road and rail. Legs measured live; costs stay synthetic estimates.
 Open the <a href="/demo/north-sea-storm/brief-card">shareable incident brief</a>,
 the <a href="/demo/storm-lab">Storm Scenario Lab</a>, the
@@ -153,6 +154,7 @@ function pill(status) {
   return '<span class="pill ' + status + '">' + status + '</span>';
 }
 function renderDemo(demo) {
+  document.getElementById("grid-corridor").textContent = demo.label;
   document.getElementById("modes").innerHTML = demo.findings.map(f =>
     '<div class="mode"><h3>' + f.mode + ' ' + pill(f.status) + '</h3>' +
     '<div>delay +' + f.delay_hours + 'h &middot; on-time ' +

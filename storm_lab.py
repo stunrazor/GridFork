@@ -1,4 +1,4 @@
-"""Storm Scenario Lab: optional workbench beside the GridFork demo.
+"""Scenario lab: optional workbench beside the GridFork demo.
 
 Fully client-driven: the page renders instantly with no live calls, and every
 inference (what-if, transcription, comparison, illustration) runs only on an
@@ -23,7 +23,7 @@ _PAGE = """<!DOCTYPE html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>GridFork Storm Scenario Lab</title>
+<title>GridFork scenario lab</title>
 <style>
   :root { color-scheme: dark; }
   body { font-family: -apple-system, "Segoe UI", Verdana, sans-serif;
@@ -57,7 +57,7 @@ _PAGE = """<!DOCTYPE html>
 </style>
 </head>
 <body>
-<h1>Storm Scenario Lab</h1>
+<h1>GridFork scenario lab</h1>
 <p class="sub">Optional workbench beside the live grid. Live data with labeled synthetic estimates.
 Every live call below runs only when you click. <a href="/">Home</a> &middot;
 <a href="/demo/grid">Back to the grid</a>.</p>
@@ -408,5 +408,5 @@ document.getElementById("lab-illus-btn").addEventListener("click", async () => {
 
 
 def render_storm_lab() -> str:
-    """Return the Storm Scenario Lab as a self-contained HTML document."""
+    """Return the scenario lab as a self-contained HTML document."""
     return _PAGE

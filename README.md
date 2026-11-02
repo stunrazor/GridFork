@@ -67,7 +67,7 @@ quantified reroutes on Cost, Time Saved, On-Time Probability, and Confidence.
 - `GET /demo/north-sea-storm/whatif?q=` — Wonder assumptions plus before/after ranking for a what-if question
 - `GET /demo/north-sea-storm/challenge?models=` — open-weight route challenge: both models critique three fixed cases, scored on agreement, schema validity, latency, and tokens
 - `GET /demo/north-sea-storm/brief-card` — shareable incident brief page (deterministic text, on-demand Muse Image illustration, print-friendly)
-- `GET /demo/storm-lab` — Storm Scenario Lab: worldwide snapshot runner (presets or custom places, Ask grounded in the corridor), typed or push-to-talk what-if input, open-weight comparison (live or mock), on-demand illustration
+- `GET /demo/storm-lab` — Scenario lab: worldwide snapshot runner (presets or custom places, Ask grounded in the corridor), typed or push-to-talk what-if input, open-weight comparison (live or mock), on-demand illustration
 - `POST /demo/north-sea-storm/transcribe` — Muse Voice Transcribe for one base64 WAV clip (`{"audio_b64", "filename"}`)
 - `GET /demo/routes` — route briefing: hero recommendation, KPI strip, comparison plus SVG schematic, side brief, and Evidence / What-if / Bench / Visual stages
 
@@ -124,7 +124,7 @@ endpoint still works on deterministic fallbacks. Tests run offline:
   (`https://api.together.xyz/v1`, `meta-models/Muse-Glimmer-30B`,
   $0.35/$1.50 per 1M) or local Ollama. A full 6-call challenge costs
   a few cents.
-- Storm Scenario Lab prerequisites: no single partner is confirmed for
+- Scenario lab prerequisites: no single partner is confirmed for
   both open models, so live comparison legs report `setup-required` /
   `unreachable` until runners are configured; `?mock=true` previews the
   panel with fixed canned critiques (labeled `mock`, no network).

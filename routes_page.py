@@ -279,16 +279,27 @@ async function rtChallenge(mock) {
     el.appendChild(table);
   } catch (e) { el.textContent = String(e); }
 }
+function rtSetCorridor(snap) {
+  document.getElementById("rt-corridor").textContent = snap.label;
+  const sea = snap.findings.find(f => f.mode === "sea");
+  const pill = document.getElementById("rt-alert-pill");
+  pill.className = "pill " + sea.status;
+  pill.textContent = sea.status === "available" ? "SEA OPEN"
+    : (sea.status === "degraded" ? "SEA ADVISORY" : "SEA DISRUPTED");
+}
 async function rtLoadLiveValues() {
   const el = document.getElementById("rt-live-values-note");
   el.textContent = "Fetching live snapshot\u2026";
   try {
-    rtAskSnapshot(await getJSON("/demo/north-sea-storm/live"));
+    const snap = await getJSON("/demo/north-sea-storm/live");
+    rtAskSnapshot(snap);
+    rtSetCorridor(snap);
     el.textContent = "Showing live measured values. Schematic stays storm-scenario.";
   } catch (e) { el.textContent = "Live fetch failed (" + e + "); showing storm scenario values."; }
 }
 function rtAskSnapshot(snap) {
   const el = document.getElementById("rt-live-values-note");
+  rtSetCorridor(snap);
   const top = snap.ranked_options[0];
   const run = snap.ranked_options[1];
   document.getElementById("rt-hero-title").textContent =
@@ -348,6 +359,11 @@ document.getElementById("rt-illus-btn").addEventListener("click", async () => {
 """
 
 _STATUS_FILL = {"disrupted": "#ff6b6b", "degraded": "#f5b942", "available": "#4ade80"}
+_SEA_PILL_TEXT = {
+    "disrupted": "SEA DISRUPTED",
+    "degraded": "SEA ADVISORY",
+    "available": "SEA OPEN",
+}
 
 
 def _tradeoff_line(ranked_options: list[dict]) -> str:
@@ -400,15 +416,17 @@ def render_routes_page(demo: dict) -> str:
         "<!DOCTYPE html>\n"
         '<html lang="en">\n<head>\n<meta charset="utf-8">\n'
         '<meta name="viewport" content="width=device-width, initial-scale=1">\n'
-        "<title>GridFork route briefing &mdash; Rotterdam to Oslo</title>\n<style>"
+        "<title>GridFork route briefing</title>\n<style>"
         + _CSS
         + "</style>\n</head>\n<body>\n"
         '<header class="route-head">\n'
-        "<h1>GridFork route briefing &mdash; Rotterdam &rarr; Oslo</h1>\n"
-        f'<p class="sub"><span class="pill {sea["status"]}">STORM DISRUPTION</span> '
+        "<h1>GridFork route briefing</h1>\n"
+        f'<p class="sub"><span class="pill {sea["status"]}" id="rt-alert-pill">'
+        f'{_SEA_PILL_TEXT[sea["status"]]}</span> '
         '<span class="badge live">LIVE DATA &middot; LABELED ESTIMATES</span> '
         '<span class="badge">DETERMINISTIC SCORING</span> '
         '<a href="/">Home</a></p>\n'
+        f'<p class="sub">Showing: <span id="rt-corridor">{demo["label"]}</span></p>\n'
         "</header>\n"
         + ask_box.render_ask_box("rt")
         + '<div class="kpi-strip">\n'

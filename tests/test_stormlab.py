@@ -21,7 +21,7 @@ def test_lab_is_deterministic():
 
 def test_lab_has_typed_input_run_button_and_push_to_talk():
     html = _lab()
-    assert "Storm Scenario Lab" in html
+    assert "<h1>GridFork scenario lab</h1>" in html
     assert "lab-input" in html
     assert "Run scenario" in html
     assert "lab-talk" in html
@@ -62,7 +62,7 @@ def test_lab_avoids_banned_framing_words():
 
 def test_lab_endpoint_returns_lab_html():
     html = north_sea_storm_lab()
-    assert "Storm Scenario Lab" in html
+    assert "<h1>GridFork scenario lab</h1>" in html
     assert "Run scenario" in html
 
 

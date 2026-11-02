@@ -56,7 +56,7 @@ visual check. One click re-renders from the live snapshot.</p>
 <a class="btn" href="/demo/grid">Open live grid</a>
 </div>
 <div class="card">
-<h2>Storm Scenario Lab</h2>
+<h2>Scenario lab</h2>
 <p>Worldwide snapshot runner for any corridor, what-if planner with voice
 input, open-weight comparison, and on-demand illustration.</p>
 <a class="btn" href="/demo/storm-lab">Open scenario lab</a>
