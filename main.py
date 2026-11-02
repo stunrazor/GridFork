@@ -1,11 +1,12 @@
 import base64
 import binascii
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import HTMLResponse
 
 import live_weather
 import openweights_client
+import snapshot as snapshot_mod
 import voice_client
 from briefing_card import render_brief_card
 from grid_page import render_grid_page
@@ -85,9 +86,41 @@ def north_sea_storm_openweights_ask(model: str = "spark-open"):
 
 
 @app.get("/demo/north-sea-storm/ask")
-def north_sea_storm_ask(q: str = ""):
+def north_sea_storm_ask(
+    q: str = "",
+    corridor: str = "",
+    from_place: str = Query("", alias="from"),
+    to: str = "",
+):
     try:
-        return run_ask(q)
+        snap = _ask_snapshot(corridor, from_place, to)
+        return run_ask(q, snapshot=snap)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+def _ask_snapshot(corridor: str, from_place: str, to: str):
+    """Worldwide grounding for Ask, or None for the demo incident."""
+    if corridor:
+        return snapshot_mod.snapshot_for_corridor(corridor)
+    if from_place and to:
+        return snapshot_mod.snapshot_for_places(from_place, to)
+    return None
+
+
+@app.get("/snapshot")
+def world_snapshot(
+    corridor: str = "",
+    from_place: str = Query("", alias="from"),
+    to: str = "",
+):
+    """Live four-mode ranking for a corridor or two place names."""
+    try:
+        if corridor:
+            return snapshot_mod.snapshot_for_corridor(corridor)
+        if from_place and to:
+            return snapshot_mod.snapshot_for_places(from_place, to)
+        raise ValueError("pass ?corridor=<id> or ?from=<place>&to=<place>")
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 

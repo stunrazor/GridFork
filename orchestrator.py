@@ -331,7 +331,7 @@ def fastest_alternative(scenario: dict) -> dict:
     }
 
 
-def run_ask(question: str) -> dict:
+def run_ask(question: str, snapshot: dict | None = None) -> dict:
     """Answer one question about the incident via Muse Spark.
 
     The model answers only from the live snapshot — ranking, findings,
@@ -339,26 +339,42 @@ def run_ask(question: str) -> dict:
     :func:`spark_client.build_ask_prompt`); without a key or on failure
     the answer reports ``setup-required`` / ``unavailable`` with no
     invented text. Raises ValueError on a blank or overlong question.
+    When ``snapshot`` (a worldwide snapshot dict) is given, the answer
+    grounds on that corridor instead of the demo incident.
     """
     asked = (question or "").strip()
     if not asked:
         raise ValueError("Ask a question about this incident and ranking.")
     if len(asked) > MAX_ASK_CHARS:
         raise ValueError(f"Question exceeds the {MAX_ASK_CHARS}-character cap.")
-    scenario, provenance, marine, wind, air, road, rail = _snapshot_parts()
-    findings = collect_findings(scenario)
-    options = build_options(
-        findings, scenario["baseline"]["storm_delay_hours_if_waiting"]
-    )
-    ranked = score_options(options)
-    live = {
-        "provenance": provenance,
-        "marine": marine,
-        "wind": wind,
-        "air": air,
-        "road": road,
-        "rail": rail,
-    }
+    if snapshot is None:
+        scenario, provenance, marine, wind, air, road, rail = _snapshot_parts()
+        findings = collect_findings(scenario)
+        options = build_options(
+            findings, scenario["baseline"]["storm_delay_hours_if_waiting"]
+        )
+        ranked = score_options(options)
+        live = {
+            "provenance": provenance,
+            "marine": marine,
+            "wind": wind,
+            "air": air,
+            "road": road,
+            "rail": rail,
+        }
+        fastest = fastest_alternative(scenario)
+    else:
+        findings = snapshot["findings"]
+        ranked = snapshot["ranked_options"]
+        live = {
+            "provenance": snapshot["provenance"],
+            "marine": snapshot["marine"],
+            "wind": snapshot["wind"],
+            "air": snapshot["air"],
+            "road": snapshot["road"],
+            "rail": snapshot["rail"],
+        }
+        fastest = snapshot["fastest_alternative"]
     routed_to, reason = route_ask(asked)
     if routed_to == "wonder":
         answer = wonder_client.answer_ask(
@@ -373,7 +389,7 @@ def run_ask(question: str) -> dict:
         "routed_to": routed_to,
         "reason": reason,
         "answer": answer,
-        "fastest_alternative": fastest_alternative(scenario),
+        "fastest_alternative": fastest,
     }
 
 
@@ -620,14 +636,14 @@ def run_challenge(
 # probabilities, and confidences stay synthetic estimates — no free
 # real-time source exists — and provenance says so per field.
 def _sea_conditions_to_delay(
-    wave_height_m: float, wind_kph: float
+    wave_height_m: float, wind_kph: float, port: str = "Rotterdam"
 ) -> tuple[int, str]:
     """Map measured conditions to (delay_hours, port_status)."""
     if wave_height_m >= 8 or wind_kph >= 100:
-        return 48, "Rotterdam departures restricted"
+        return 48, f"{port} departures restricted"
     if wave_height_m >= 4 or wind_kph >= 60:
-        return 12, "Rotterdam departures advisory"
-    return 2, "Rotterdam departures normal"
+        return 12, f"{port} departures advisory"
+    return 2, f"{port} departures normal"
 
 
 def build_live_scenario() -> tuple[dict, dict, dict, dict]:

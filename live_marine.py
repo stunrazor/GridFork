@@ -17,12 +17,17 @@ FALLBACK_WAVE_HEIGHT_M = 8.5
 
 def fetch_north_sea_waves(timeout: float = 10.0) -> dict:
     """Return the live wave readout, or a labeled synthetic fallback."""
+    return fetch_waves_at(LATITUDE, LONGITUDE, timeout=timeout)
+
+
+def fetch_waves_at(latitude: float, longitude: float, timeout: float = 10.0) -> dict:
+    """Return the live wave readout for any ocean point, or a fallback."""
     try:
         response = httpx.get(
             MARINE_URL,
             params={
-                "latitude": LATITUDE,
-                "longitude": LONGITUDE,
+                "latitude": latitude,
+                "longitude": longitude,
                 "current": "wave_height",
                 "timezone": "UTC",
             },

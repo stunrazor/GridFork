@@ -144,8 +144,7 @@ async function getJSON(path) {
 function pill(status) {
   return '<span class="pill ' + status + '">' + status + '</span>';
 }
-async function loadDemo() {
-  const demo = await getJSON("/demo/north-sea-storm");
+function renderDemo(demo) {
   document.getElementById("modes").innerHTML = demo.findings.map(f =>
     '<div class="mode"><h3>' + f.mode + ' ' + pill(f.status) + '</h3>' +
     '<div>delay +' + f.delay_hours + 'h &middot; on-time ' +
@@ -158,6 +157,9 @@ async function loadDemo() {
   document.getElementById("ranking").innerHTML =
     "<tr><th>#</th><th>Option</th><th>Score</th><th>Cost</th>" +
     "<th>Saved</th><th>On-time</th><th>Conf.</th></tr>" + rows;
+}
+async function loadDemo() {
+  renderDemo(await getJSON("/demo/north-sea-storm"));
 }
 async function loadSummary() {
   try {
@@ -175,11 +177,16 @@ async function loadWeather() {
       w.wind_kph + " kph" + (w.observed_at ? " at " + w.observed_at : "");
   } catch (e) { document.getElementById("weather").textContent = String(e); }
 }
+let liveOn = false;
 document.getElementById("live-btn").addEventListener("click", async () => {
   const el = document.getElementById("live");
-  el.textContent = "Fetching live snapshot\u2026";
+  el.textContent = liveOn ? "Reloading storm scenario\u2026" : "Fetching live snapshot\u2026";
   try {
-    const snap = await getJSON("/demo/north-sea-storm/live");
+    const snap = liveOn ? await getJSON("/demo/north-sea-storm")
+      : await getJSON("/demo/north-sea-storm/live");
+    renderDemo(snap);
+    if (liveOn) { el.textContent = "Tables show the storm scenario; click again for live values."; }
+    else {
     const top = snap.ranked_options[0];
     const sea = snap.findings.find(f => f.mode === "sea");
     el.textContent =
@@ -198,7 +205,10 @@ document.getElementById("live-btn").addEventListener("click", async () => {
         : "") +
       "; rail " + snap.rail.source +
       (snap.rail.live ? " " + snap.rail.active_count + " active" : "") +
-      "; top pick now " + top.option_id + " at score " + top.score + ".";
+      "; top pick now " + top.option_id + " at score " + top.score + "." +
+      " Tables now show live values; click again for the storm scenario.";
+    }
+    liveOn = !liveOn;
   } catch (e) { el.textContent = String(e); }
 });
 document.getElementById("vision-btn").addEventListener("click", async () => {

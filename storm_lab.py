@@ -7,6 +7,16 @@ push-to-talk button is held; nothing is recorded automatically.
 """
 
 import ask_box
+import geo
+
+
+def _corridor_options() -> str:
+    """Option tags for every preset, in geo single-source order."""
+    return "".join(
+        f'<option value="{cid}">{preset["label"]}</option>'
+        for cid, preset in geo.CORRIDORS.items()
+    )
+
 
 _PAGE = """<!DOCTYPE html>
 <html lang="en">
@@ -42,7 +52,17 @@ _PAGE = """<!DOCTYPE html>
 Every live call below runs only when you click. <a href="/">Home</a> &middot;
 <a href="/demo/grid">Back to the grid</a>.</p>
 
-""" + ask_box.render_ask_box("lab") + """<h2>1. Scenario question</h2>
+""" + ask_box.render_ask_box("lab") + """<h2>0. Worldwide snapshot</h2>
+<p class="note">Live four-mode ranking for any corridor: pick a preset or
+type two places. Runs only when you click; Ask above grounds its answers
+in the corridor selected here.</p>
+<select id="lab-corridor">""" + _corridor_options() + """</select>
+<input id="lab-from" placeholder="From (custom place)" style="width: 25%">
+<input id="lab-to" placeholder="To (custom place)" style="width: 25%">
+<button id="lab-snapshot-btn" type="button">Run live snapshot</button>
+<div id="lab-snapshot-out" class="note">Not run yet.</div>
+
+<h2>1. Scenario question</h2>
 <p class="note">Type a what-if, or hold the talk button to dictate it. The
 microphone is used only while you hold the button; nothing is recorded
 automatically.</p>
@@ -270,6 +290,84 @@ async function runChallenge(mock) {
 }
 document.getElementById("lab-live-btn").addEventListener("click", () => runChallenge(false));
 document.getElementById("lab-mock-btn").addEventListener("click", () => runChallenge(true));
+function labCustomPair() {
+  const f = document.getElementById("lab-from").value.trim();
+  const t = document.getElementById("lab-to").value.trim();
+  return (f && t) ? [f, t] : null;
+}
+function labAskContext() {
+  const pair = labCustomPair();
+  if (pair) return "&from=" + encodeURIComponent(pair[0]) + "&to=" + encodeURIComponent(pair[1]);
+  return "&corridor=" + document.getElementById("lab-corridor").value;
+}
+function labSnapshotURL() {
+  const pair = labCustomPair();
+  if (pair) return "/snapshot?from=" + encodeURIComponent(pair[0]) + "&to=" + encodeURIComponent(pair[1]);
+  return "/snapshot?corridor=" + document.getElementById("lab-corridor").value;
+}
+function labLegDetail(leg) {
+  if (!leg.applicable) return leg.reason;
+  if (leg.mode === "sea") return leg.wave_height_m + "m waves, " + leg.wind_kph + "kph wind [" + leg.marine_source + "/" + leg.wind_source + "]";
+  if (leg.mode === "air") return (leg.airborne_origin + leg.airborne_dest) + " airborne near endpoints [" + leg.source + "]";
+  if (leg.mode === "road") {
+    const inc = leg.incidents ? ", " + leg.incidents.count + " incidents" : "";
+    return "flow ratio " + leg.worst_ratio + inc + " [" + leg.source + "]";
+  }
+  return (leg.detail || "") + " [" + (leg.live ? "entur" : "estimated") + "]";
+}
+document.getElementById("lab-snapshot-btn").addEventListener("click", async () => {
+  const el = document.getElementById("lab-snapshot-out");
+  el.textContent = "Fetching live snapshot\\u2026";
+  try {
+    const snap = await getJSON(labSnapshotURL());
+    el.textContent = "";
+    const head = document.createElement("p");
+    head.textContent = snap.label + " (" + snap.distance_km + "km). Fastest alternate: " +
+      snap.fastest_alternative.option_id + " (" + snap.fastest_alternative.total_hours + "h total).";
+    el.appendChild(head);
+    const legs = document.createElement("table");
+    const legHead = document.createElement("tr");
+    ["Mode", "Status", "Live", "Delay", "Transit", "Detail"].forEach(t => {
+      const th = document.createElement("th");
+      th.textContent = t;
+      legHead.appendChild(th);
+    });
+    legs.appendChild(legHead);
+    ["sea", "air", "road", "rail"].forEach(mode => {
+      const leg = snap.legs[mode];
+      const tr = document.createElement("tr");
+      [mode, leg.applicable ? leg.status : "n/a", leg.live ? "yes" : "no",
+       leg.delay_hours === null ? "n/a" : "+" + leg.delay_hours + "h",
+       leg.transit_hours === null ? "n/a" : leg.transit_hours + "h",
+       labLegDetail(leg)].forEach(v => {
+        const td = document.createElement("td");
+        td.textContent = v;
+        tr.appendChild(td);
+      });
+      legs.appendChild(tr);
+    });
+    el.appendChild(legs);
+    const ranked = document.createElement("table");
+    const rankHead = document.createElement("tr");
+    ["Rank", "Mode", "Score", "Cost", "Time saved", "On-time"].forEach(t => {
+      const th = document.createElement("th");
+      th.textContent = t;
+      rankHead.appendChild(th);
+    });
+    ranked.appendChild(rankHead);
+    snap.ranked_options.forEach(o => {
+      const tr = document.createElement("tr");
+      [o.rank, o.mode, o.score, "$" + o.cost_usd, "+" + o.time_saved_hours + "h",
+       o.on_time_probability].forEach(v => {
+        const td = document.createElement("td");
+        td.textContent = v;
+        tr.appendChild(td);
+      });
+      ranked.appendChild(tr);
+    });
+    el.appendChild(ranked);
+  } catch (e) { el.textContent = String(e); }
+});
 document.getElementById("lab-illus-btn").addEventListener("click", async () => {
   const el = document.getElementById("lab-illustration");
   el.textContent = "Generating illustration\\u2026";
@@ -289,7 +387,7 @@ document.getElementById("lab-illus-btn").addEventListener("click", async () => {
   } catch (e) { el.textContent = String(e); }
 });
 </script>
-""" + ask_box.render_ask_script("lab") + """</body>
+""" + ask_box.render_ask_script("lab", extra=" + labAskContext()") + """</body>
 </html>
 """
 

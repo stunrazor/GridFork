@@ -161,16 +161,19 @@ def fetch_db_disruptions(timeout: float = 10.0) -> dict:
         }
 
 
-def fetch_entur_disruptions(timeout: float = 10.0) -> dict:
-    """Return live Oslo S disruption counts, keyless, or a fallback.
+def fetch_entur_disruptions(
+    timeout: float = 10.0, stop_id: str = ENTUR_OSLO_S
+) -> dict:
+    """Return live disruption counts for a stop, keyless, or a fallback.
 
     Counts cancellations plus 10+ minute delays among the next 20
-    departures; routine small delays are ignored.
+    departures; routine small delays are ignored. Defaults to Oslo S;
+    worldwide corridors pass their own stop id.
     """
     try:
         response = httpx.post(
             ENTUR_URL,
-            json={"query": ENTUR_QUERY},
+            json={"query": ENTUR_QUERY.replace(ENTUR_OSLO_S, stop_id)},
             headers={"ET-Client-Name": ENTUR_CLIENT_NAME},
             timeout=timeout,
         )
@@ -210,13 +213,16 @@ def fetch_entur_disruptions(timeout: float = 10.0) -> dict:
         }
 
 
-def fetch_rail_disruptions(timeout: float = 10.0) -> dict:
+def fetch_rail_disruptions(
+    timeout: float = 10.0, entur_stop: str = ENTUR_OSLO_S
+) -> dict:
     """Return live rail disruptions: NS, else DB, else keyless Entur.
 
     The readout shape is unified: ``active_count`` counts disruptions and
     ``severe_count`` counts the severe subset (Rotterdam mentions for NS,
     cancellations for DB and Entur); ``source`` says which provider
-    answered.
+    answered. ``entur_stop`` carries the worldwide stop id; NS/DB keep
+    their country networks.
     """
     first_failure = None
     if (os.environ.get("NS_API_KEY") or "").strip():
@@ -244,7 +250,7 @@ def fetch_rail_disruptions(timeout: float = 10.0) -> dict:
             return db
         if first_failure is None:
             first_failure = db
-    entur = fetch_entur_disruptions(timeout=timeout)
+    entur = fetch_entur_disruptions(timeout=timeout, stop_id=entur_stop)
     if entur["live"]:
         return entur
     return first_failure if first_failure is not None else entur

@@ -26,8 +26,12 @@ question is a paid call and runs on click only.</p>
 """
 
 
-def render_ask_script(prefix: str) -> str:
-    """Render the ask wiring script for ids namespaced under ``prefix``."""
+def render_ask_script(prefix: str, extra: str = "") -> str:
+    """Render the ask wiring script for ids namespaced under ``prefix``.
+
+    ``extra`` is a JS expression appended to the request URL, so a page
+    can ground Ask in its own context (the lab appends its corridor).
+    """
     return f"""<script>
 document.getElementById("{prefix}-ask-btn").addEventListener("click", async () => {{
   const el = document.getElementById("{prefix}-ask-out");
@@ -35,7 +39,7 @@ document.getElementById("{prefix}-ask-btn").addEventListener("click", async () =
   if (!q) {{ el.textContent = "Type a question first."; return; }}
   el.textContent = "Asking…";
   try {{
-    const res = await fetch("{ASK_PATH}?q=" + encodeURIComponent(q));
+    const res = await fetch("{ASK_PATH}?q=" + encodeURIComponent(q){extra});
     if (!res.ok) {{ el.textContent = "Request failed: HTTP " + res.status + "."; return; }}
     const body = await res.json();
     const ans = body.answer;

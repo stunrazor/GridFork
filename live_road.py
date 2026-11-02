@@ -39,10 +39,10 @@ SETUP_DETAIL = (
 )
 
 
-def _fetch_flow(api_key: str, timeout: float) -> list[dict]:
+def _fetch_flow(api_key: str, timeout: float, points: tuple) -> list[dict]:
     """Current/free-flow ratios per sample point; raises if none usable."""
-    points = []
-    for label, lat, lon in POINTS:
+    found = []
+    for label, lat, lon in points:
         response = httpx.get(
             FLOW_URL,
             params={"point": f"{lat},{lon}", "key": api_key},
@@ -53,15 +53,15 @@ def _fetch_flow(api_key: str, timeout: float) -> list[dict]:
         free = float(segment["freeFlowSpeed"])
         if free <= 0:
             continue
-        points.append(
+        found.append(
             {
                 "label": label,
                 "ratio": round(float(segment["currentSpeed"]) / free, 3),
             }
         )
-    if not points:
+    if not found:
         raise ValueError("no usable flow segments")
-    return points
+    return found
 
 
 def _severity(value) -> int | None:
@@ -72,14 +72,14 @@ def _severity(value) -> int | None:
         return None
 
 
-def _fetch_incidents(api_key: str, timeout: float) -> dict | None:
+def _fetch_incidents(api_key: str, timeout: float, points: tuple) -> dict | None:
     """Aggregate live incidents over the sample boxes; None if all fail."""
     count = 0
     closures = 0
     majors = 0
     sample: list[str] = []
     boxes_ok = 0
-    for _, lat, lon in POINTS:
+    for _, lat, lon in points:
         try:
             response = httpx.get(
                 INCIDENTS_URL,
@@ -120,13 +120,15 @@ def _fetch_incidents(api_key: str, timeout: float) -> dict | None:
     }
 
 
-def _fetch_route(api_key: str, timeout: float) -> dict | None:
-    """Routed truck transit Rotterdam-Oslo; None on any failure."""
+def _fetch_route(
+    api_key: str, timeout: float, origin: tuple, dest: tuple
+) -> dict | None:
+    """Routed truck transit between two points; None on any failure."""
     try:
-        origin = f"{ROUTE_ORIGIN[0]},{ROUTE_ORIGIN[1]}"
-        dest = f"{ROUTE_DEST[0]},{ROUTE_DEST[1]}"
+        origin_s = f"{origin[0]},{origin[1]}"
+        dest_s = f"{dest[0]},{dest[1]}"
         response = httpx.get(
-            ROUTING_URL.format(origin=origin, dest=dest),
+            ROUTING_URL.format(origin=origin_s, dest=dest_s),
             params={"key": api_key, "traffic": "true", "travelMode": "truck"},
             timeout=timeout,
         )
@@ -143,13 +145,19 @@ def _fetch_route(api_key: str, timeout: float) -> dict | None:
         return None
 
 
-def fetch_corridor_congestion(timeout: float = 10.0) -> dict:
+def fetch_corridor_congestion(
+    timeout: float = 10.0,
+    points: tuple = POINTS,
+    origin: tuple = ROUTE_ORIGIN,
+    dest: tuple = ROUTE_DEST,
+) -> dict:
     """Return live road data, setup-required, or a fallback.
 
     Each point reports current speed as a ratio of free-flow speed; the
     worst (lowest) ratio drives the road leg. Live with at least one
     usable flow point; the incident and route blocks attach when their
-    calls succeed and are None otherwise.
+    calls succeed and are None otherwise. Points and endpoints default
+    to the Rotterdam-Oslo corridor; worldwide corridors pass their own.
     """
     api_key = (os.environ.get("TOMTOM_API_KEY") or "").strip()
     if not api_key:
@@ -164,14 +172,14 @@ def fetch_corridor_congestion(timeout: float = 10.0) -> dict:
             "detail": SETUP_DETAIL,
         }
     try:
-        points = _fetch_flow(api_key, timeout)
+        found = _fetch_flow(api_key, timeout, points)
         return {
             "source": "tomtom",
             "live": True,
-            "worst_ratio": min(p["ratio"] for p in points),
-            "points": points,
-            "incidents": _fetch_incidents(api_key, timeout),
-            "route": _fetch_route(api_key, timeout),
+            "worst_ratio": min(p["ratio"] for p in found),
+            "points": found,
+            "incidents": _fetch_incidents(api_key, timeout, points),
+            "route": _fetch_route(api_key, timeout, origin, dest),
             # Flow/incident/route payloads carry no usable global timestamp.
             "observed_at": None,
         }

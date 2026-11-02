@@ -139,16 +139,18 @@ def build_ask_context(
 
 def _live_condition_lines(live: dict) -> list[str]:
     """Compact measured-condition lines plus delay provenance per mode."""
-    marine = live.get("marine", {})
-    wind = live.get("wind", {})
-    air = live.get("air", {})
-    road = live.get("road", {})
-    rail = live.get("rail", {})
+    marine = live.get("marine") or {}
+    wind = live.get("wind") or {}
+    air = live.get("air") or {}
+    road = live.get("road") or {}
+    rail = live.get("rail") or {}
+    first = air.get("airborne_ams", air.get("airborne_origin"))
+    second = air.get("airborne_osl", air.get("airborne_dest"))
     lines = [
         f"sea: {marine.get('wave_height_m')}m waves [{marine.get('source')}], "
         f"{wind.get('wind_kph')}kph wind [{wind.get('source')}].",
-        f"air: {air.get('airborne_ams')}+{air.get('airborne_osl')} airborne "
-        f"[AMS+OSL, {air.get('source')}].",
+        f"air: {first}+{second} airborne "
+        f"[endpoints, {air.get('source')}].",
     ]
     incidents = road.get("incidents") or {}
     route = road.get("route") or {}

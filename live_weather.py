@@ -17,12 +17,17 @@ FALLBACK_WIND_KPH = 110.0
 
 def fetch_rotterdam_wind(timeout: float = 10.0) -> dict:
     """Return the live wind readout, or a labeled synthetic fallback."""
+    return fetch_wind_at(LATITUDE, LONGITUDE, timeout=timeout)
+
+
+def fetch_wind_at(latitude: float, longitude: float, timeout: float = 10.0) -> dict:
+    """Return the live wind readout for any point, or a fallback."""
     try:
         response = httpx.get(
             FORECAST_URL,
             params={
-                "latitude": LATITUDE,
-                "longitude": LONGITUDE,
+                "latitude": latitude,
+                "longitude": longitude,
                 "current": "wind_speed_10m",
                 "wind_speed_unit": "ms",
             },

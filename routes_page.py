@@ -276,6 +276,45 @@ async function rtChallenge(mock) {
     el.appendChild(table);
   } catch (e) { el.textContent = String(e); }
 }
+document.getElementById("rt-live-values-btn").addEventListener("click", async () => {
+  const el = document.getElementById("rt-live-values-note");
+  el.textContent = "Fetching live snapshot\u2026";
+  try {
+    const snap = await getJSON("/demo/north-sea-storm/live");
+    const top = snap.ranked_options[0];
+    const run = snap.ranked_options[1];
+    document.getElementById("rt-hero-title").textContent =
+      "Recommended: " + top.option_id + " \u2014 " + top.title;
+    document.getElementById("rt-hero-nums").textContent =
+      "Score " + top.score + " \u00b7 $" + top.cost_usd +
+      " \u00b7 saves " + top.time_saved_hours + "h" +
+      " \u00b7 on-time " + top.on_time_probability +
+      " \u00b7 confidence " + top.confidence;
+    const costGap = run.cost_usd - top.cost_usd;
+    const timeGap = top.time_saved_hours - run.time_saved_hours;
+    document.getElementById("rt-tradeoff").textContent =
+      "Tradeoff vs " + run.option_id + ": top pick " +
+      (costGap >= 0 ? "saves $" + costGap : "costs $" + (-costGap) + " more") +
+      " and " + (timeGap >= 0 ? "saves " + timeGap + "h more" : "saves " + (-timeGap) + "h less") + ".";
+    document.getElementById("rt-kpi-score").textContent = top.score;
+    document.getElementById("rt-kpi-cost").textContent = "$" + top.cost_usd;
+    document.getElementById("rt-kpi-saved").textContent = top.time_saved_hours + "h";
+    document.getElementById("rt-kpi-otp").textContent = top.on_time_probability;
+    const body = document.getElementById("rt-comp-body");
+    body.textContent = "";
+    snap.ranked_options.forEach(o => {
+      const tr = document.createElement("tr");
+      [o.rank, o.option_id, o.score, "$" + o.cost_usd,
+       o.time_saved_hours + "h", o.on_time_probability, o.confidence].forEach(v => {
+        const td = document.createElement("td");
+        td.textContent = v;
+        tr.appendChild(td);
+      });
+      body.appendChild(tr);
+    });
+    el.textContent = "Showing live measured values. Schematic stays storm-scenario.";
+  } catch (e) { el.textContent = String(e); }
+});
 document.getElementById("rt-live-btn").addEventListener("click", () => rtChallenge(false));
 document.getElementById("rt-mock-btn").addEventListener("click", () => rtChallenge(true));
 document.getElementById("rt-illus-btn").addEventListener("click", async () => {
@@ -365,25 +404,28 @@ def render_routes_page(demo: dict) -> str:
         + ask_box.render_ask_box("rt")
         + '<div class="kpi-strip">\n'
         '<div class="kpi-strip">\n'
-        f'<div class="kpi"><div class="k">Score</div><div class="v">{top["score"]}</div></div>\n'
-        f'<div class="kpi"><div class="k">Cost</div><div class="v">${top["cost_usd"]}</div></div>\n'
-        f'<div class="kpi"><div class="k">Time saved</div><div class="v">{top["time_saved_hours"]}h</div></div>\n'
-        f'<div class="kpi"><div class="k">On-time</div><div class="v">{top["on_time_probability"]}</div></div>\n'
+        f'<div class="kpi"><div class="k">Score</div><div class="v" id="rt-kpi-score">{top["score"]}</div></div>\n'
+        f'<div class="kpi"><div class="k">Cost</div><div class="v" id="rt-kpi-cost">${top["cost_usd"]}</div></div>\n'
+        f'<div class="kpi"><div class="k">Time saved</div><div class="v" id="rt-kpi-saved">{top["time_saved_hours"]}h</div></div>\n'
+        f'<div class="kpi"><div class="k">On-time</div><div class="v" id="rt-kpi-otp">{top["on_time_probability"]}</div></div>\n'
         "</div>\n"
+        '<p><button id="rt-live-values-btn" type="button">Show live values</button>\n'
+        '<span id="rt-live-values-note" class="note">Showing storm scenario values.</span></p>\n'
         '<div class="hero">\n'
-        f'<h2>Recommended: {top["option_id"]} &mdash; {top["title"]}</h2>\n'
-        f'<p class="nums">Score {top["score"]} &middot; ${top["cost_usd"]} '
+        f'<h2 id="rt-hero-title">Recommended: {top["option_id"]} &mdash; {top["title"]}</h2>\n'
+        f'<p class="nums" id="rt-hero-nums">Score {top["score"]} &middot; ${top["cost_usd"]} '
         f'&middot; saves {top["time_saved_hours"]}h '
         f'&middot; on-time {top["on_time_probability"]} '
         f'&middot; confidence {top["confidence"]}</p>\n'
-        f"<p>{_tradeoff_line(ranked)}</p>\n"
+        f'<p id="rt-tradeoff">{_tradeoff_line(ranked)}</p>\n'
         "</div>\n"
         '<div class="main-grid">\n'
         '<div class="panel">\n<h2>Route comparison</h2>\n<table>\n'
         "<tr><th>#</th><th>Option</th><th>Score</th><th>Cost</th>"
         "<th>Saved</th><th>On-time</th><th>Conf.</th></tr>\n"
+        '<tbody id="rt-comp-body">\n'
         + rows
-        + "</table>\n"
+        + "</tbody>\n</table>\n"
         "<h2>Schematic (not a map)</h2>\n"
         + _schematic(demo["findings"])
         + "</div>\n"

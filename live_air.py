@@ -45,16 +45,24 @@ def _count_airborne(states) -> int:
     return airborne
 
 
-def fetch_corridor_traffic(timeout: float = 10.0) -> dict:
-    """Return live AMS/OSL traffic counts, setup-required, or a fallback."""
+def fetch_corridor_traffic(
+    timeout: float = 10.0,
+    boxes: tuple = (("ams", AMS_BOX), ("osl", OSL_BOX)),
+) -> dict:
+    """Return live traffic counts per box, setup-required, or a fallback.
+
+    ``boxes`` is ``(tag, box)`` pairs; counts land under ``airborne_<tag>``.
+    Defaults cover the AMS-OSL air bridge; worldwide corridors pass their
+    own endpoint boxes.
+    """
+    blank = {f"airborne_{tag}": None for tag, _ in boxes}
     client_id = (os.environ.get("OPENSKY_CLIENT_ID") or "").strip()
     client_secret = (os.environ.get("OPENSKY_CLIENT_SECRET") or "").strip()
     if not client_id or not client_secret:
         return {
             "source": "setup-required",
             "live": False,
-            "airborne_ams": None,
-            "airborne_osl": None,
+            **blank,
             "observed_at": None,
             "detail": SETUP_DETAIL,
         }
@@ -72,27 +80,25 @@ def fetch_corridor_traffic(timeout: float = 10.0) -> dict:
         headers = {"Authorization": f"Bearer {token.json()['access_token']}"}
         counts = {}
         observed = None
-        for tag, box in (("ams", AMS_BOX), ("osl", OSL_BOX)):
+        for tag, box in boxes:
             response = httpx.get(
                 STATES_URL, params=dict(box), headers=headers, timeout=timeout
             )
             response.raise_for_status()
             payload = response.json()
-            counts[tag] = _count_airborne(payload.get("states"))
+            counts[f"airborne_{tag}"] = _count_airborne(payload.get("states"))
             observed = payload["time"]
         return {
             "source": "opensky",
             "live": True,
-            "airborne_ams": counts["ams"],
-            "airborne_osl": counts["osl"],
+            **counts,
             "observed_at": datetime.fromtimestamp(observed, tz=timezone.utc).isoformat(),
         }
     except Exception as exc:
         return {
             "source": "synthetic-fallback",
             "live": False,
-            "airborne_ams": None,
-            "airborne_osl": None,
+            **blank,
             "observed_at": None,
             # Failure class only (never URLs, headers, or bodies) so a
             # production fallback stays diagnosable without leaking secrets.
@@ -130,20 +136,28 @@ def _adsb_base() -> str:
     )
 
 
-def fetch_adsb_traffic(timeout: float = 10.0) -> dict:
-    """Return live AMS/OSL traffic counts from adsb.lol, or a fallback."""
+def fetch_adsb_traffic(
+    timeout: float = 10.0,
+    points: tuple = (("ams", ADSB_AMS), ("osl", ADSB_OSL)),
+) -> dict:
+    """Return live traffic counts from adsb.lol, or a fallback.
+
+    ``points`` is ``(tag, (lat, lon))`` pairs; counts land under
+    ``airborne_<tag>``. Defaults cover the demo endpoints.
+    """
+    blank = {f"airborne_{tag}": None for tag, _ in points}
     try:
         base = _adsb_base()
         counts = {}
         observed = None
-        for tag, (lat, lon) in (("ams", ADSB_AMS), ("osl", ADSB_OSL)):
+        for tag, (lat, lon) in points:
             response = httpx.get(
                 f"{base}/v2/lat/{lat}/lon/{lon}/dist/{ADSB_RADIUS_NM}",
                 timeout=timeout,
             )
             response.raise_for_status()
             payload = response.json()
-            counts[tag] = _count_adsb_airborne(payload.get("ac"))
+            counts[f"airborne_{tag}"] = _count_adsb_airborne(payload.get("ac"))
             observed = payload.get("now", observed)
         try:
             stamp = observed / 1000 if observed > 1e11 else observed
@@ -153,37 +167,46 @@ def fetch_adsb_traffic(timeout: float = 10.0) -> dict:
         return {
             "source": "adsb-lol",
             "live": True,
-            "airborne_ams": counts["ams"],
-            "airborne_osl": counts["osl"],
+            **counts,
             "observed_at": observed_at,
         }
     except Exception as exc:
         return {
             "source": "synthetic-fallback",
             "live": False,
-            "airborne_ams": None,
-            "airborne_osl": None,
+            **blank,
             "observed_at": None,
             "detail": _failure_detail(exc),
         }
 
 
-def fetch_air_traffic(timeout: float = 10.0) -> dict:
+def fetch_air_traffic(
+    timeout: float = 10.0,
+    boxes: tuple | None = None,
+    points: tuple | None = None,
+) -> dict:
     """Return live air traffic: OpenSky, else keyless adsb.lol.
 
     OpenSky is tried when credentials are set; adsb.lol whenever OpenSky
     is unconfigured or fails. ``source`` says which provider answered.
+    ``boxes``/``points`` override the demo endpoints for worldwide pairs.
     """
     first_failure = None
     if (os.environ.get("OPENSKY_CLIENT_ID") or "").strip() and (
         os.environ.get("OPENSKY_CLIENT_SECRET") or ""
     ).strip():
-        opensky = fetch_corridor_traffic(timeout=timeout)
+        opensky = fetch_corridor_traffic(
+            timeout=timeout,
+            **({"boxes": boxes} if boxes is not None else {}),
+        )
         if opensky["live"]:
             return opensky
         if opensky["source"] != "setup-required":
             first_failure = opensky
-    adsb = fetch_adsb_traffic(timeout=timeout)
+    adsb = fetch_adsb_traffic(
+        timeout=timeout,
+        **({"points": points} if points is not None else {}),
+    )
     if adsb["live"]:
         return adsb
     return first_failure if first_failure is not None else adsb
