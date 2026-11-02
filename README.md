@@ -31,6 +31,10 @@ quantified reroutes on Cost, Time Saved, On-Time Probability, and Confidence.
   question into explicit assumptions (Muse Wonder live, deterministic
   parser offline) and the deterministic engine recomputes the ranking,
   returning before/after scores plus the assumptions.
+- Ask-as-basis stages: `/summary`, `/whatif`, `/vision`, `/image`, and
+  `/challenge` each accept `?corridor=` or `?from=&to=` and run against
+  that asked corridor; Route Briefing adopts the latest ask as the basis
+  line above the stage columns.
 - Phase 1 real data: the `/live` snapshot feeds measured North Sea wave
   height (Open-Meteo Marine, keyless) and Rotterdam wind into the sea leg
   through an explicit documented rule; costs and probabilities stay
@@ -55,17 +59,17 @@ quantified reroutes on Cost, Time Saved, On-Time Probability, and Confidence.
 - `GET /health`
 - `GET /demo/grid` — observable grid page (findings, ranking, vision, wind)
 - `GET /demo/north-sea-storm` — findings plus ranked options (JSON)
-- `GET /demo/north-sea-storm/summary` — plus Spark narrative rationale
-- `GET /demo/north-sea-storm/vision` — plus SAM ground truth (`?image_url=`)
+- `GET /demo/north-sea-storm/summary` — plus Spark narrative rationale (`?corridor=` / `?from=&to=` for an asked corridor)
+- `GET /demo/north-sea-storm/vision` — plus SAM ground truth (`?image_url=`, `?corridor=` / `?from=&to=`)
 - `GET /demo/north-sea-storm/weather` — live wind or labeled fallback
 - `GET /demo/north-sea-storm/live` — live snapshot: measured waves/wind drive the sea leg, Phase 2 air/road/rail layers join when keyed, per-field provenance included
 - `GET /demo/north-sea-storm/ask?q=...` — one question about traffic, disruptions, and the ranking, grounded worldwide in the named places (typed, dictated, or `?corridor=` / `?from=&to=`). Routes scenario/why-questions to Wonder and facts to Spark (paid per question, setup-required offline) and always reports the deterministic fastest alternate across all four modes; questions without places get free guidance
 - `GET /snapshot?corridor=<id>` (or `?from=<place>&to=<place>`) — live four-mode ranking for any corridor: legs, findings, ranked options, fastest alternate, per-field provenance
 - `GET /demo/north-sea-storm/brief` — plus Muse Wonder decision explanation
-- `GET /demo/north-sea-storm/image` — plus Muse Image illustration
+- `GET /demo/north-sea-storm/image` — plus Muse Image illustration (`?corridor=` / `?from=&to=`)
 - `GET /demo/north-sea-storm/openweights?model=` — Spark Open / Glimmer runner setup status (`spark-open`, `glimmer`)
-- `GET /demo/north-sea-storm/whatif?q=` — Wonder assumptions plus before/after ranking for a what-if question
-- `GET /demo/north-sea-storm/challenge?models=` — open-weight route challenge: both models critique three fixed cases, scored on agreement, schema validity, latency, and tokens
+- `GET /demo/north-sea-storm/whatif?q=` — Wonder assumptions plus before/after ranking for a what-if question (`?corridor=` / `?from=&to=`)
+- `GET /demo/north-sea-storm/challenge?models=` — open-weight route challenge: both models critique three fixed cases, scored on agreement, schema validity, latency, and tokens (`?corridor=` / `?from=&to=`, `&mock=true` for canned critiques)
 - `GET /demo/north-sea-storm/brief-card` — shareable incident brief page (deterministic text, on-demand Muse Image illustration, print-friendly)
 - `GET /demo/storm-lab` — Scenario lab: worldwide snapshot runner (presets or custom places, Ask grounded in the corridor), typed or push-to-talk what-if input, open-weight comparison (live or mock), on-demand illustration
 - `POST /demo/north-sea-storm/transcribe` — Muse Voice Transcribe for one base64 WAV clip (`{"audio_b64", "filename"}`)

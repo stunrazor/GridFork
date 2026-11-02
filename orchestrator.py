@@ -119,16 +119,26 @@ def run_demo() -> dict:
     }
 
 
-def run_demo_with_summary() -> dict:
+def run_demo_with_summary(snapshot: dict | None = None) -> dict:
     """Demo plus a narrative summary; falls back deterministically offline.
 
     The ranking itself is always the deterministic result. Only the attached
     ``summary`` dict may come from Muse Spark when ``META_MODEL_API_KEY`` is
-    set and the API call succeeds.
+    set and the API call succeeds. Pass a worldwide ``snapshot`` to brief
+    the asked corridor instead of the incident.
     """
-    demo = run_demo()
-    demo["summary"] = spark_client.generate_summary(demo["ranked_options"])
-    return demo
+    if snapshot is None:
+        demo = run_demo()
+        demo["summary"] = spark_client.generate_summary(demo["ranked_options"])
+        return demo
+    return {
+        "label": snapshot["label"],
+        "scenario": snapshot["scenario"],
+        "synthetic": False,
+        "findings": snapshot["findings"],
+        "ranked_options": snapshot["ranked_options"],
+        "summary": spark_client.generate_summary(snapshot["ranked_options"]),
+    }
 
 
 def run_demo_with_brief() -> dict:
@@ -154,16 +164,8 @@ VISION_DEFAULT_IMAGE_URL = (
 VISION_MAX_ADDED_DELAY_HOURS = 12
 
 
-def run_demo_with_vision(image_url: str = VISION_DEFAULT_IMAGE_URL) -> dict:
-    """Demo plus SAM visual ground truth blended into the sea leg.
-
-    Blend rule: a live SAM result adds ``round(score * 12)`` delay hours to
-    the sea finding before options are rebuilt and rescored, so the
-    ``sea-wait`` numbers visibly move. Without a key, or when the API call
-    fails, the ranking is identical to :func:`run_demo` and the ``vision``
-    block reports ``source: "unavailable"``.
-    """
-    demo = run_demo()
+def _vision_check(image_url: str) -> tuple[dict, int]:
+    """Run one SAM check; return the vision block and added sea hours."""
     url = (image_url or "").strip() or VISION_DEFAULT_IMAGE_URL
     result = sam_client.segment_image(VISION_CONCEPT, url)
     detections = len(result["detections"])
@@ -177,9 +179,31 @@ def run_demo_with_vision(image_url: str = VISION_DEFAULT_IMAGE_URL) -> dict:
         "score": score,
         "sea_delay_added_hours": 0,
     }
+    added = 0
     if result["source"] == "sam-3.1":
         added = round(score * VISION_MAX_ADDED_DELAY_HOURS)
         vision["sea_delay_added_hours"] = added
+    return vision, added
+
+
+def run_demo_with_vision(
+    image_url: str = VISION_DEFAULT_IMAGE_URL,
+    snapshot: dict | None = None,
+) -> dict:
+    """Demo plus SAM visual ground truth blended into the sea leg.
+
+    Blend rule: a live SAM result adds ``round(score * 12)`` delay hours to
+    the sea finding before options are rebuilt and rescored, so the
+    ``sea-wait`` numbers visibly move. Without a key, or when the API call
+    fails, the ranking is identical to :func:`run_demo` and the ``vision``
+    block reports ``source: "unavailable"``. Pass a worldwide ``snapshot``
+    to blend into the asked corridor's sea leg instead.
+    """
+    if snapshot is not None:
+        return run_corridor_vision(image_url, snapshot)
+    demo = run_demo()
+    vision, added = _vision_check(image_url)
+    if vision["source"] == "sam-3.1":
         scenario = load_scenario()
         findings = collect_findings(scenario)
         for finding in findings:
@@ -187,7 +211,7 @@ def run_demo_with_vision(image_url: str = VISION_DEFAULT_IMAGE_URL) -> dict:
                 finding["delay_hours"] += added
                 finding["vision_adjustment"] = (
                     f"+{added}h port congestion from SAM "
-                    f"({detections} detections, score {score})"
+                    f"({vision['detections']} detections, score {vision['score']})"
                 )
         options = build_options(findings, scenario["baseline"]["storm_delay_hours_if_waiting"])
         demo["findings"] = findings
@@ -196,14 +220,68 @@ def run_demo_with_vision(image_url: str = VISION_DEFAULT_IMAGE_URL) -> dict:
     return demo
 
 
-def run_demo_with_image() -> dict:
+def run_corridor_vision(image_url: str, snapshot: dict) -> dict:
+    """Blend one SAM check into an asked corridor's sea leg.
+
+    Same blend rule as :func:`run_demo_with_vision`, rescored through
+    the shared corridor ranker. Corridors without an applicable sea leg
+    keep the SAM readout but blend zero hours.
+    """
+    vision, added = _vision_check(image_url)
+    scenario = snapshot["scenario"]
+    modes = copy.deepcopy(scenario["modes"])
+    if vision["source"] == "sam-3.1" and "sea" in scenario["applicable"]:
+        modes["sea"]["delay_hours"] += added
+    else:
+        vision["sea_delay_added_hours"] = 0
+        added = 0
+    ranked_modes = rank_corridor_modes(
+        modes, snapshot["label"], scenario["applicable"]
+    )
+    if added:
+        for finding in ranked_modes["findings"]:
+            if finding["mode"] == "sea":
+                finding["vision_adjustment"] = (
+                    f"+{added}h port congestion from SAM "
+                    f"({vision['detections']} detections, score {vision['score']})"
+                )
+    return {
+        "label": snapshot["label"],
+        "scenario": {
+            "label": scenario["label"],
+            "modes": modes,
+            "applicable": scenario["applicable"],
+        },
+        "synthetic": False,
+        "findings": ranked_modes["findings"],
+        "ranked_options": ranked_modes["ranked_options"],
+        "vision": vision,
+    }
+
+
+def run_demo_with_image(snapshot: dict | None = None) -> dict:
     """Demo plus a Muse Image illustration; unavailable offline.
 
     The ranking itself is always the deterministic result. The attached
     ``image`` dict carries generated bytes only when ``META_MODEL_API_KEY``
     is set and the API call succeeds; otherwise it reports
-    ``source: "unavailable"`` with no bytes.
+    ``source: "unavailable"`` with no bytes. Pass a worldwide
+    ``snapshot`` to illustrate the asked corridor instead.
     """
+    if snapshot is not None:
+        sea = snapshot["scenario"]["modes"].get("sea", {})
+        return {
+            "label": snapshot["label"],
+            "scenario": snapshot["scenario"],
+            "synthetic": False,
+            "findings": snapshot["findings"],
+            "ranked_options": snapshot["ranked_options"],
+            "image": image_client.generate_scenario_image(
+                snapshot["label"],
+                sea.get("wave_height_m", 0),
+                sea.get("wind_kph", 0),
+            ),
+        }
     demo = run_demo()
     scenario = load_scenario()
     sea = scenario["modes"]["sea"]
@@ -225,6 +303,98 @@ def run_demo_with_openweights(model_key: str = "spark-open") -> dict:
     prompt = openweights_client.build_severity_prompt(demo["findings"])
     demo["openweights"] = openweights_client.generate_text(model_key, prompt)
     return demo
+
+
+# Corridor ranking shared by /snapshot and the corridor-aware stage
+# endpoints (brief, what-if, evidence, bench, illustration). Slices for
+# missing modes are completed with neutral placeholders so the shared
+# agents always run the same way; findings, options, and the fastest
+# alternate then filter to the geographically applicable modes.
+CORRIDOR_MODE_ORDER = ("sea", "air", "road", "rail")
+CORRIDOR_DEFAULT_DELAY_HOURS = 6
+
+
+def complete_corridor_slices(slices: dict, route_label: str) -> dict:
+    """Return slices with neutral placeholders for any missing mode."""
+    completed = {mode: dict(slice_) for mode, slice_ in slices.items()}
+    if "road" not in completed:
+        completed["road"] = {
+            "route": route_label,
+            "distance_km": 0,
+            "transit_hours": 0,
+            "delay_hours": CORRIDOR_DEFAULT_DELAY_HOURS,
+            "cost_usd": 0,
+            "on_time_probability": 0.0,
+            "confidence": 0.0,
+        }
+    if "rail" not in completed:
+        completed["rail"] = {
+            "route": route_label,
+            "transit_hours": 0,
+            "delay_hours": CORRIDOR_DEFAULT_DELAY_HOURS,
+            "cost_usd": 0,
+            "on_time_probability": 0.0,
+            "confidence": 0.0,
+        }
+    return completed
+
+
+def rank_corridor_modes(
+    slices: dict, label: str, applicable: list, route_label: str = ""
+) -> dict:
+    """Complete, collect, and rank corridor slices for the given modes.
+
+    ``applicable`` is the geographically applicable subset of modes in
+    any order; everything in the response follows CORRIDOR_MODE_ORDER.
+    ``route_label`` only fills placeholders and is unused when every
+    mode already has a slice. Returns findings, ranked options, the
+    fastest alternate, and the completed slices (the scenario the
+    stages re-rank).
+    """
+    completed = complete_corridor_slices(slices, route_label)
+    ordered = [mode for mode in CORRIDOR_MODE_ORDER if mode in applicable]
+    by_mode = {
+        finding["mode"]: finding
+        for finding in collect_findings({"modes": completed})
+    }
+    findings = [by_mode[mode] for mode in ordered]
+    # Time saved is door-to-door (transit plus delay), so the ranking and
+    # the fastest alternate agree; saving against delay alone would crown
+    # a slow-but-calm leg over a genuinely quicker one.
+    totals = {
+        mode: completed[mode]["transit_hours"] + by_mode[mode]["delay_hours"]
+        for mode in ordered
+    }
+    baseline = max(totals.values())
+    options = [
+        {
+            "option_id": f"{mode}-leg",
+            "title": f"{mode.capitalize()} · {label}",
+            "mode": mode,
+            "cost_usd": by_mode[mode]["cost_usd"],
+            "time_saved_hours": round(baseline - totals[mode], 1),
+            "on_time_probability": by_mode[mode]["on_time_probability"],
+            "confidence": by_mode[mode]["confidence"],
+        }
+        for mode in ordered
+    ]
+    fastest = min(
+        ordered,
+        key=lambda mode: (totals[mode], CORRIDOR_MODE_ORDER.index(mode)),
+    )
+    return {
+        "applicable": ordered,
+        "findings": findings,
+        "ranked_options": score_options(options),
+        "fastest_alternative": {
+            "mode": fastest,
+            "option_id": f"{fastest}-leg",
+            "total_hours": round(totals[fastest], 1),
+            "transit_hours": completed[fastest]["transit_hours"],
+            "delay_hours": by_mode[fastest]["delay_hours"],
+        },
+        "slices": completed,
+    }
 
 
 # Fields a what-if assumption may adjust, with their clamp rules applied in
@@ -523,13 +693,15 @@ def run_ask(question: str, snapshot: dict | None = None) -> dict:
     }
 
 
-def run_whatif(question: str) -> dict:
+def run_whatif(question: str, snapshot: dict | None = None) -> dict:
     """Answer a what-if question with before/after deterministic rankings.
 
     Muse Wonder (or the deterministic parser offline) turns the question
     into explicit assumptions; the existing deterministic engine then
     recomputes findings, scores, and ranking from the adjusted scenario.
     The model never scores or ranks. Raises ValueError on a blank question.
+    Pass a worldwide ``snapshot`` to rescore the asked corridor instead
+    of the incident.
     """
     asked = (question or "").strip()
     if not asked:
@@ -537,6 +709,8 @@ def run_whatif(question: str) -> dict:
             "Ask a what-if question, e.g. "
             "'What if Rotterdam closes for six more hours?'"
         )
+    if snapshot is not None:
+        return run_corridor_whatif(asked, snapshot)
     baseline = run_demo()
     whatif = wonder_client.generate_whatif(
         asked, baseline["ranked_options"], baseline["findings"]
@@ -570,6 +744,56 @@ def run_whatif(question: str) -> dict:
         "whatif": whatif,
         "ranked_baseline": baseline["ranked_options"],
         "findings_after": findings_after,
+        "ranked_options": ranked_after,
+        "comparison": comparison,
+    }
+
+
+def run_corridor_whatif(asked: str, snapshot: dict) -> dict:
+    """Rescore an asked corridor under what-if assumptions.
+
+    Same contract as :func:`run_whatif`, but the baseline is a
+    worldwide snapshot and the rescore runs the shared corridor ranker
+    over the adjusted slices. ``asked`` must already be stripped.
+    """
+    whatif = wonder_client.generate_whatif(
+        asked, snapshot["ranked_options"], snapshot["findings"]
+    )
+    scenario = snapshot["scenario"]
+    adjusted = apply_whatif_assumptions(
+        {"modes": scenario["modes"]}, whatif["assumptions"]
+    )["modes"]
+    ranked_modes = rank_corridor_modes(
+        adjusted, snapshot["label"], scenario["applicable"]
+    )
+    ranked_after = ranked_modes["ranked_options"]
+    before_by_id = {o["option_id"]: o for o in snapshot["ranked_options"]}
+    comparison = []
+    for option in ranked_after:
+        before = before_by_id[option["option_id"]]
+        comparison.append(
+            {
+                "option_id": option["option_id"],
+                "title": option["title"],
+                "score_before": before["score"],
+                "score_after": option["score"],
+                "score_delta": round(option["score"] - before["score"], 4),
+                "rank_before": before["rank"],
+                "rank_after": option["rank"],
+            }
+        )
+    return {
+        "scenario": {
+            "label": scenario["label"],
+            "modes": adjusted,
+            "applicable": scenario["applicable"],
+        },
+        "synthetic": False,
+        "label": snapshot["label"],
+        "question": asked,
+        "whatif": whatif,
+        "ranked_baseline": snapshot["ranked_options"],
+        "findings_after": ranked_modes["findings"],
         "ranked_options": ranked_after,
         "comparison": comparison,
     }
@@ -625,22 +849,84 @@ MOCK_CRITIQUE_TEXT = (
 )
 
 
-def _mock_challenge_completion(model_key: str, prompt: str) -> dict:
+def _mock_challenge_completion(
+    model_key: str, prompt: str, preferred_option_id: str = "rail-reroute"
+) -> dict:
     """Return a canned completion; never touches the network or runners."""
     _ = (model_key, prompt)
+    if preferred_option_id == "rail-reroute":
+        text = MOCK_CRITIQUE_TEXT
+    else:
+        text = (
+            '{"agree_with_top_pick": true, '
+            f'"preferred_option_id": "{preferred_option_id}", '
+            '"concerns": ["Mock critique for offline preview"], '
+            '"confidence": 0.7}'
+        )
     return {
         "model": model_key,
         "source": "mock",
-        "text": MOCK_CRITIQUE_TEXT,
+        "text": text,
         "latency_ms": None,
         "usage": None,
     }
+
+
+def _challenge_specs_for_snapshot(snapshot: dict) -> list[dict]:
+    """Build baseline/disrupted/blocked cases for an asked corridor.
+
+    The first two applicable modes play the demo's rail/road roles: the
+    middle case disrupts the first, the last case blocks the second hard
+    enough to flip the deterministic top pick.
+    """
+    label = snapshot["label"]
+    applicable = snapshot["scenario"]["applicable"]
+    first = applicable[0]
+    second = applicable[1] if len(applicable) > 1 else applicable[0]
+    return [
+        {
+            "case_id": "baseline",
+            "label": f"Baseline {label}",
+            "assumptions": [],
+        },
+        {
+            "case_id": f"{first}-plus-12h",
+            "label": (
+                f"{first.capitalize()} disrupted twelve extra hours "
+                f"on {label}"
+            ),
+            "assumptions": [
+                {
+                    "mode": first,
+                    "field": "delay_hours",
+                    "delta": 12,
+                    "reason": "Challenge case: primary leg disrupted.",
+                }
+            ],
+        },
+        {
+            "case_id": f"{second}-plus-30h",
+            "label": (
+                f"{second.capitalize()} blocked thirty extra hours "
+                f"on {label}"
+            ),
+            "assumptions": [
+                {
+                    "mode": second,
+                    "field": "delay_hours",
+                    "delta": 30,
+                    "reason": "Challenge case: second leg blocked.",
+                }
+            ],
+        },
+    ]
 
 
 def run_challenge(
     model_keys: tuple[str, ...] | list[str] = ("spark-open", "glimmer"),
     timeout: float = 300.0,
     mock: bool = False,
+    snapshot: dict | None = None,
 ) -> dict:
     """Run the route challenge: each model critiques each fixed storm case.
 
@@ -649,22 +935,40 @@ def run_challenge(
     invalid JSON) marks that entry accordingly and never raises; only an
     unknown model key raises ValueError. With ``mock=True`` every entry
     uses fixed canned critiques labeled ``source: "mock"`` and no network
-    call is attempted.
+    call is attempted. Pass a worldwide ``snapshot`` to challenge the
+    asked corridor's ranking instead.
     """
     keys = list(model_keys)
     for key in keys:
         if key not in openweights_client.MODELS:
             raise ValueError(f"unknown open-weight model: {key!r}")
-    base = run_demo()
+    if snapshot is not None:
+        specs: list[dict] = _challenge_specs_for_snapshot(snapshot)
+        base: dict | None = None
+    else:
+        specs = list(CHALLENGE_CASES)
+        base = run_demo()
     cases = []
-    for spec in CHALLENGE_CASES:
-        scenario = apply_whatif_assumptions(load_scenario(), spec["assumptions"])
-        findings = collect_findings(scenario)
-        ranked = score_options(
-            build_options(
-                findings, scenario["baseline"]["storm_delay_hours_if_waiting"]
+    for spec in specs:
+        if snapshot is not None:
+            adjusted = apply_whatif_assumptions(
+                {"modes": snapshot["scenario"]["modes"]}, spec["assumptions"]
+            )["modes"]
+            ranked_modes = rank_corridor_modes(
+                adjusted, snapshot["label"], snapshot["scenario"]["applicable"]
             )
-        )
+            findings = ranked_modes["findings"]
+            ranked = ranked_modes["ranked_options"]
+        else:
+            scenario = apply_whatif_assumptions(
+                load_scenario(), spec["assumptions"]
+            )
+            findings = collect_findings(scenario)
+            ranked = score_options(
+                build_options(
+                    findings, scenario["baseline"]["storm_delay_hours_if_waiting"]
+                )
+            )
         cases.append(
             {
                 "case_id": spec["case_id"],
@@ -675,6 +979,9 @@ def run_challenge(
                 "ranked_options": ranked,
             }
         )
+    mock_preferred = (
+        cases[0]["deterministic_top"] if snapshot is not None else "rail-reroute"
+    )
     results = []
     for key in keys:
         for case in cases:
@@ -682,7 +989,7 @@ def run_challenge(
                 case["label"], case["findings"], case["ranked_options"]
             )
             if mock:
-                completion = _mock_challenge_completion(key, prompt)
+                completion = _mock_challenge_completion(key, prompt, mock_preferred)
             else:
                 completion = openweights_client.complete_with_metrics(
                     key, prompt, timeout=timeout
@@ -749,10 +1056,19 @@ def run_challenge(
                 ),
             }
         )
+    if snapshot is not None:
+        scenario_out = snapshot["scenario"]
+        synthetic = False
+        label = snapshot["label"]
+    else:
+        assert base is not None
+        scenario_out = base["scenario"]
+        synthetic = True
+        label = base["label"]
     return {
-        "scenario": base["scenario"],
-        "synthetic": True,
-        "label": base["label"],
+        "scenario": scenario_out,
+        "synthetic": synthetic,
+        "label": label,
         "authoritative": CHALLENGE_AUTHORITATIVE_NOTE,
         "cases": cases,
         "results": results,

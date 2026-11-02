@@ -49,6 +49,7 @@ _CSS = """
   .available { background: #1e7e34; color: #fff; border-color: #1e7e34; }
   .stages { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem;
             margin-top: 1rem; }
+  .stage-col { display: flex; flex-direction: column; gap: 1rem; }
   button { font-size: 0.85rem; padding: 0.4rem 0.8rem; cursor: pointer;
            background: #1b2942; color: #f4f7fb; border: 1px solid #7dd3fc; }
   button:active { background: #274067; }
@@ -89,11 +90,38 @@ async function postJSON(path, payload) {
   return r.json();
 }
 const CHALLENGE = "/demo/north-sea-storm/challenge?models=";
+let rtStageCorridor = "", rtStageFrom = "", rtStageTo = "";
+function rtStageParams() {
+  if (rtStageCorridor) return "corridor=" + encodeURIComponent(rtStageCorridor);
+  if (rtStageFrom && rtStageTo)
+    return "from=" + encodeURIComponent(rtStageFrom) +
+      "&to=" + encodeURIComponent(rtStageTo);
+  return "";
+}
+function rtStageQuery(hasQuery) {
+  const p = rtStageParams();
+  if (!p) return "";
+  return (hasQuery ? "&" : "?") + p;
+}
+function rtSetStagesBasis(snap) {
+  const el = document.getElementById("rt-stages-basis");
+  const eps = snap && snap.endpoints;
+  if (eps && eps.origin && eps.dest) {
+    rtStageCorridor = snap.corridor || "";
+    rtStageFrom = eps.origin.name || "";
+    rtStageTo = eps.dest.name || "";
+    el.textContent = "Evidence stages basis: " + snap.label +
+      " \\u2014 click each stage to run it.";
+  } else {
+    rtStageCorridor = ""; rtStageFrom = ""; rtStageTo = "";
+    el.textContent = "Evidence stages basis: North Sea incident.";
+  }
+}
 document.getElementById("rt-summary-btn").addEventListener("click", async () => {
   const el = document.getElementById("rt-brief");
   el.textContent = "Asking Muse Spark\\u2026";
   try {
-    const demo = await getJSON("/demo/north-sea-storm/summary");
+    const demo = await getJSON("/demo/north-sea-storm/summary" + rtStageQuery(false));
     el.textContent = "[" + demo.summary.source + "] " + demo.summary.text;
   } catch (e) { el.textContent = String(e); }
 });
@@ -102,7 +130,7 @@ document.getElementById("rt-run").addEventListener("click", async () => {
   el.textContent = "Asking Muse Wonder\\u2026";
   try {
     const q = document.getElementById("rt-input").value;
-    const demo = await getJSON("/demo/north-sea-storm/whatif?q=" + encodeURIComponent(q));
+    const demo = await getJSON("/demo/north-sea-storm/whatif?q=" + encodeURIComponent(q) + rtStageQuery(true));
     el.textContent = "";
     const head = document.createElement("p");
     head.textContent = "[" + demo.whatif.source + "] " + demo.whatif.explanation;
@@ -236,20 +264,22 @@ document.getElementById("rt-vision-btn").addEventListener("click", async () => {
   const el = document.getElementById("rt-vision");
   el.textContent = "Running SAM segmentation\\u2026";
   try {
-    const demo = await getJSON("/demo/north-sea-storm/vision");
+    const demo = await getJSON("/demo/north-sea-storm/vision" + rtStageQuery(false));
     const v = demo.vision;
-    const sea = demo.ranked_options.find(o => o.option_id === "sea-wait");
+    const sea = demo.ranked_options.find(o => o.mode === "sea");
+    const tail = sea ? (sea.option_id + " now saves " +
+      sea.time_saved_hours + "h at score " + sea.score + ".")
+      : "no sea option on this corridor.";
     el.textContent = "[" + v.source + "] " + v.detections +
       " container detections, congestion " + v.score +
-      ", +" + v.sea_delay_added_hours + "h port delay; sea-wait now saves " +
-      sea.time_saved_hours + "h at score " + sea.score + ".";
+      ", +" + v.sea_delay_added_hours + "h port delay; " + tail;
   } catch (e) { el.textContent = String(e); }
 });
 async function rtChallenge(mock) {
   const el = document.getElementById("rt-challenge");
   el.textContent = "Running comparison\\u2026";
   try {
-    const demo = await getJSON(CHALLENGE + "spark-open,glimmer" + (mock ? "&mock=true" : ""));
+    const demo = await getJSON(CHALLENGE + "spark-open,glimmer" + (mock ? "&mock=true" : "") + rtStageQuery(true));
     el.textContent = "";
     demo.summary.forEach(s => {
       const p = document.createElement("p");
@@ -282,6 +312,11 @@ async function rtChallenge(mock) {
 function rtSetPill(snap) {
   const sea = snap.findings.find(f => f.mode === "sea");
   const pill = document.getElementById("rt-alert-pill");
+  if (!sea) {
+    pill.className = "pill";
+    pill.textContent = "SEA N/A";
+    return;
+  }
   pill.className = "pill " + sea.status;
   pill.textContent = sea.status === "available" ? "SEA OPEN"
     : (sea.status === "degraded" ? "SEA ADVISORY" : "SEA DISRUPTED");
@@ -299,6 +334,7 @@ async function rtLoadLiveValues() {
 function rtAskSnapshot(snap) {
   const el = document.getElementById("rt-live-values-note");
   rtSetPill(snap);
+  rtSetStagesBasis(snap);
   const top = snap.ranked_options[0];
   const run = snap.ranked_options[1];
   document.getElementById("rt-hero-title").textContent =
@@ -359,7 +395,7 @@ document.getElementById("rt-illus-btn").addEventListener("click", async () => {
   const el = document.getElementById("rt-illustration");
   el.textContent = "Generating illustration\\u2026";
   try {
-    const demo = await getJSON("/demo/north-sea-storm/image");
+    const demo = await getJSON("/demo/north-sea-storm/image" + rtStageQuery(false));
     const img = demo.image;
     if (img.data_url) {
       el.textContent = "[" + img.source + "] " + img.note + " ";
@@ -486,13 +522,27 @@ def render_routes_page(demo: dict) -> str:
         '<button id="rt-summary-btn" type="button">Refresh live (Spark)</button>\n'
         "</div>\n"
         "</div>\n"
+        '<p id="rt-stages-basis" class="note">'
+        "Evidence stages basis: North Sea incident.</p>\n"
         '<div class="stages">\n'
+        '<div class="stage-col">\n'
         '<div class="panel">\n<h2>Evidence &mdash; SAM 3.1</h2>\n'
         '<p class="note">Reference imagery, not a live feed. '
         '<span class="badge live">SAM-3.1</span></p>\n'
         '<button id="rt-vision-btn" type="button">Run SAM check</button>\n'
         '<p id="rt-vision" class="note">Not run yet.</p>\n'
         "</div>\n"
+        '<div class="panel">\n<h2>Model Bench &mdash; advisory</h2>\n'
+        '<p class="note">Side-by-side open-weight critiques; ranking stays '
+        "authoritative. Live needs configured runners; mock uses canned data. "
+        '<span class="badge live">SPARK-OPEN</span> '
+        '<span class="badge live">GLIMMER</span></p>\n'
+        '<p><button id="rt-live-btn" type="button">Run live comparison</button>\n'
+        '<button id="rt-mock-btn" type="button">Preview with mock data</button></p>\n'
+        '<div id="rt-challenge" class="note">Not run yet.</div>\n'
+        "</div>\n"
+        "</div>\n"
+        '<div class="stage-col">\n'
         '<div class="panel">\n<h2>What-if &mdash; Wonder + Voice</h2>\n'
         '<p class="note">Assumptions shown; the engine rescores. Hold to talk; '
         "mic only while held. "
@@ -504,21 +554,13 @@ def render_routes_page(demo: dict) -> str:
         '<p id="rt-voice-status" class="note">Voice: idle.</p>\n'
         '<div id="rt-result" class="note">Not run yet.</div>\n'
         "</div>\n"
-        '<div class="panel">\n<h2>Model Bench &mdash; advisory</h2>\n'
-        '<p class="note">Side-by-side open-weight critiques; ranking stays '
-        "authoritative. Live needs configured runners; mock uses canned data. "
-        '<span class="badge live">SPARK-OPEN</span> '
-        '<span class="badge live">GLIMMER</span></p>\n'
-        '<p><button id="rt-live-btn" type="button">Run live comparison</button>\n'
-        '<button id="rt-mock-btn" type="button">Preview with mock data</button></p>\n'
-        '<div id="rt-challenge" class="note">Not run yet.</div>\n'
-        "</div>\n"
         '<div class="panel">\n<h2>Visual Brief &mdash; Image</h2>\n'
         '<p class="label">AI-generated editorial illustration &mdash; '
         "illustrative only. Not a real port image, map, or evidence. "
         '<span class="badge warn">AI-GENERATED</span></p>\n'
         '<button id="rt-illus-btn" type="button">Generate illustration</button>\n'
         '<div id="rt-illustration" class="note">Not generated yet.</div>\n'
+        "</div>\n"
         "</div>\n"
         "</div>\n"
         "<footer>\n<p>Sources: deterministic scoring (always) &middot; brief "

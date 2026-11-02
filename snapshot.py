@@ -377,63 +377,16 @@ def build_snapshot(
             "confidence": "estimated",
         }
 
-    # Inapplicable legs still need slices for the shared agents; their
-    # findings are filtered out of the response below.
-    if "road" not in slices:
-        slices["road"] = {
-            "route": route_label,
-            "distance_km": 0,
-            "transit_hours": 0,
-            "delay_hours": DEFAULT_DELAY_HOURS,
-            "cost_usd": 0,
-            "on_time_probability": 0.0,
-            "confidence": 0.0,
-        }
-    if "rail" not in slices:
-        slices["rail"] = {
-            "route": route_label,
-            "transit_hours": 0,
-            "delay_hours": DEFAULT_DELAY_HOURS,
-            "cost_usd": 0,
-            "on_time_probability": 0.0,
-            "confidence": 0.0,
-        }
-    findings = {
-        finding["mode"]: finding
-        for finding in orchestrator.collect_findings({"modes": slices})
-        if finding["mode"] in legs and legs[finding["mode"]].get("applicable", True)
-    }
-    for mode, finding in findings.items():
-        legs[mode]["status"] = finding["status"]
-    applicable = [mode for mode in MODE_ORDER if mode in findings]
-    # Time saved is door-to-door (transit plus delay), so the ranking and
-    # the fastest alternate agree; saving against delay alone would crown
-    # a slow-but-calm leg over a genuinely quicker one.
-    totals = {
-        mode: legs[mode]["transit_hours"] + legs[mode]["delay_hours"]
-        for mode in applicable
-    }
-    baseline = max(totals.values())
-    options = [
-        {
-            "option_id": f"{mode}-leg",
-            "title": f"{mode.capitalize()} · {label}",
-            "mode": mode,
-            "cost_usd": findings[mode]["cost_usd"],
-            "time_saved_hours": round(baseline - totals[mode], 1),
-            "on_time_probability": findings[mode]["on_time_probability"],
-            "confidence": findings[mode]["confidence"],
-        }
-        for mode in applicable
+    applicable = [
+        mode
+        for mode in MODE_ORDER
+        if mode in legs and legs[mode].get("applicable", True)
     ]
-    ranked = orchestrator.score_options(options)
-    fastest = min(
-        applicable,
-        key=lambda mode: (
-            legs[mode]["transit_hours"] + legs[mode]["delay_hours"],
-            MODE_ORDER.index(mode),
-        ),
+    ranked_modes = orchestrator.rank_corridor_modes(
+        slices, label, applicable, route_label=route_label
     )
+    for finding in ranked_modes["findings"]:
+        legs[finding["mode"]]["status"] = finding["status"]
     return {
         "corridor": None,
         "label": label,
@@ -446,17 +399,14 @@ def build_snapshot(
         "road": readouts["road"],
         "rail": readouts["rail"],
         "provenance": provenance,
-        "findings": [findings[mode] for mode in applicable],
-        "ranked_options": ranked,
-        "fastest_alternative": {
-            "mode": fastest,
-            "option_id": f"{fastest}-leg",
-            "total_hours": round(
-                legs[fastest]["transit_hours"] + legs[fastest]["delay_hours"], 1
-            ),
-            "transit_hours": legs[fastest]["transit_hours"],
-            "delay_hours": legs[fastest]["delay_hours"],
+        "scenario": {
+            "label": label,
+            "modes": ranked_modes["slices"],
+            "applicable": ranked_modes["applicable"],
         },
+        "findings": ranked_modes["findings"],
+        "ranked_options": ranked_modes["ranked_options"],
+        "fastest_alternative": ranked_modes["fastest_alternative"],
     }
 
 

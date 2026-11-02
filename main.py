@@ -50,13 +50,36 @@ def north_sea_storm():
 
 
 @app.get("/demo/north-sea-storm/summary")
-def north_sea_storm_summary():
-    return run_demo_with_summary()
+def north_sea_storm_summary(
+    corridor: str = "",
+    from_place: str = Query("", alias="from"),
+    to: str = "",
+):
+    try:
+        return run_demo_with_summary(
+            snapshot=_stage_snapshot(corridor, from_place, to)
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except httpx.HTTPError as exc:
+        raise HTTPException(status_code=502, detail=f"geocoding failed: {exc}")
 
 
 @app.get("/demo/north-sea-storm/vision")
-def north_sea_storm_vision(image_url: str = VISION_DEFAULT_IMAGE_URL):
-    return run_demo_with_vision(image_url)
+def north_sea_storm_vision(
+    image_url: str = VISION_DEFAULT_IMAGE_URL,
+    corridor: str = "",
+    from_place: str = Query("", alias="from"),
+    to: str = "",
+):
+    try:
+        return run_demo_with_vision(
+            image_url, snapshot=_stage_snapshot(corridor, from_place, to)
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except httpx.HTTPError as exc:
+        raise HTTPException(status_code=502, detail=f"geocoding failed: {exc}")
 
 
 @app.get("/demo/north-sea-storm/weather")
@@ -75,8 +98,19 @@ def north_sea_storm_brief():
 
 
 @app.get("/demo/north-sea-storm/image")
-def north_sea_storm_image():
-    return run_demo_with_image()
+def north_sea_storm_image(
+    corridor: str = "",
+    from_place: str = Query("", alias="from"),
+    to: str = "",
+):
+    try:
+        return run_demo_with_image(
+            snapshot=_stage_snapshot(corridor, from_place, to)
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except httpx.HTTPError as exc:
+        raise HTTPException(status_code=502, detail=f"geocoding failed: {exc}")
 
 
 @app.get("/demo/north-sea-storm/openweights")
@@ -144,21 +178,56 @@ def world_snapshot(
         raise HTTPException(status_code=502, detail=f"geocoding failed: {exc}")
 
 
+def _stage_snapshot(corridor: str, from_place: str, to: str):
+    """Resolve stage corridor params to a worldwide snapshot or None.
+
+    No params means the incident path; a corridor id or a from/to pair
+    builds the asked corridor the stage runs against. Raises ValueError
+    and httpx.HTTPError like /snapshot for the caller to translate.
+    """
+    if corridor:
+        return snapshot_mod.snapshot_for_corridor(corridor)
+    if from_place and to:
+        return snapshot_mod.snapshot_for_places(from_place, to)
+    return None
+
+
 @app.get("/demo/north-sea-storm/whatif")
-def north_sea_storm_whatif(q: str = ""):
+def north_sea_storm_whatif(
+    q: str = "",
+    corridor: str = "",
+    from_place: str = Query("", alias="from"),
+    to: str = "",
+):
     try:
-        return run_whatif(q)
+        return run_whatif(
+            q, snapshot=_stage_snapshot(corridor, from_place, to)
+        )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
+    except httpx.HTTPError as exc:
+        raise HTTPException(status_code=502, detail=f"geocoding failed: {exc}")
 
 
 @app.get("/demo/north-sea-storm/challenge")
-def north_sea_storm_challenge(models: str = "spark-open,glimmer", mock: bool = False):
+def north_sea_storm_challenge(
+    models: str = "spark-open,glimmer",
+    mock: bool = False,
+    corridor: str = "",
+    from_place: str = Query("", alias="from"),
+    to: str = "",
+):
     keys = [m.strip() for m in (models or "").split(",") if m.strip()]
     try:
-        return run_challenge(keys or ["spark-open", "glimmer"], mock=mock)
+        return run_challenge(
+            keys or ["spark-open", "glimmer"],
+            mock=mock,
+            snapshot=_stage_snapshot(corridor, from_place, to),
+        )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
+    except httpx.HTTPError as exc:
+        raise HTTPException(status_code=502, detail=f"geocoding failed: {exc}")
 
 
 @app.post("/demo/north-sea-storm/transcribe")
