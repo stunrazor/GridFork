@@ -19,6 +19,16 @@ import orchestrator
 DEFAULT_DELAY_HOURS = 6
 SEA_SPEED_KMH = 35.0
 SEA_DETOUR = 1.15
+# Port dwell each end: without it a 10 km coastal hop would out-time a truck.
+SEA_HANDLING_HOURS = 12.0
+# Below this corridor length sea freight and flights stop being options a
+# traveler would pick; they leave the ranking with a reason instead.
+SEA_MIN_KM = 100.0
+AIR_MIN_KM = 100.0
+# Rule delays assume corridor scale (~500 km of disruption exposure), so a
+# 12 km hop scales them near zero instead of inheriting a 6 h floor.
+DELAY_SCALE_KM = 500.0
+DELAY_MIN_KM = 25.0
 AIR_SPEED_KMH = 750.0
 AIR_HANDLING_HOURS = 2.0
 ROAD_SPEED_KMH = 70.0
@@ -31,6 +41,8 @@ LIVE_CONFIDENCE = 0.85
 DEFAULT_CONFIDENCE = 0.6
 OCEAN_REASON = "Open ocean between endpoints: no road link exists."
 OCEAN_RAIL_REASON = "Open ocean between endpoints: no rail link exists."
+SHORT_SEA_REASON = "Corridor too short for sea freight."
+SHORT_AIR_REASON = "Corridor too short to fly."
 
 MODE_ORDER = ("sea", "air", "road", "rail")
 
@@ -45,6 +57,17 @@ def _confidence(delay_provenance: str) -> float:
     if delay_provenance == "estimated-from-conditions":
         return LIVE_CONFIDENCE
     return DEFAULT_CONFIDENCE
+
+
+def _scale_delay(delay_hours: float, distance_km: float) -> int:
+    """Scale a corridor delay to the trip length.
+
+    Disruption exposure grows with distance: a free-flow road rule of 6 h
+    is sensible across 500 km but absurd across 12 km. Full weight at or
+    above :data:`DELAY_SCALE_KM`, shrinking below it to a small floor.
+    """
+    factor = min(1.0, max(distance_km, DELAY_MIN_KM) / DELAY_SCALE_KM)
+    return round(delay_hours * factor)
 
 
 def _not_applicable(mode: str, reason: str) -> dict:
@@ -92,9 +115,18 @@ def build_snapshot(
 
     # Sea: waves at the sea point, wind at the origin port.
     sea_dist = round(distance * SEA_DETOUR, 1)
-    sea_transit = round(sea_dist / SEA_SPEED_KMH, 1)
-    marine = live_marine.fetch_waves_at(sea_pt[0], sea_pt[1], timeout=timeout)
-    wind = live_weather.fetch_wind_at(o[0], o[1], timeout=timeout)
+    sea_transit = round(sea_dist / SEA_SPEED_KMH + SEA_HANDLING_HOURS, 1)
+    sea_short = distance < SEA_MIN_KM
+    marine = (
+        live_marine.fetch_waves_at(sea_pt[0], sea_pt[1], timeout=timeout)
+        if not sea_short
+        else {"source": "not-applicable", "live": False, "wave_height_m": 0}
+    )
+    wind = (
+        live_weather.fetch_wind_at(o[0], o[1], timeout=timeout)
+        if not sea_short
+        else {"source": "not-applicable", "live": False, "wind_kph": 0}
+    )
     readouts["marine"], readouts["wind"] = marine, wind
     sea_live = marine["live"] or wind["live"]
     if sea_live:
@@ -107,6 +139,7 @@ def build_snapshot(
             f"{origin['name']} departures unknown"
         )
         delay_prov = "estimated-default"
+    delay = _scale_delay(delay, distance)
     legs["sea"] = {
         "mode": "sea",
         "applicable": True,
@@ -139,17 +172,34 @@ def build_snapshot(
         "on_time_probability": "synthetic-estimate",
         "confidence": "synthetic-estimate",
     }
+    if sea_short:
+        legs["sea"] = _not_applicable("sea", SHORT_SEA_REASON)
+        readouts["marine"] = readouts["wind"] = {
+            "source": "not-applicable",
+            "live": False,
+        }
+        provenance["sea"] = {"delay_hours": "not-applicable"}
 
     # Air: traffic near both endpoints, OpenSky then keyless adsb.lol.
     air_dist = distance
     air_transit = round(air_dist / AIR_SPEED_KMH + AIR_HANDLING_HOURS, 1)
-    air = live_air.fetch_air_traffic(
-        timeout=timeout,
-        boxes=(
-            ("origin", geo.opensky_box(*o)),
-            ("dest", geo.opensky_box(*d)),
-        ),
-        points=(("origin", o), ("dest", d)),
+    air_short = distance < AIR_MIN_KM
+    air = (
+        live_air.fetch_air_traffic(
+            timeout=timeout,
+            boxes=(
+                ("origin", geo.opensky_box(*o)),
+                ("dest", geo.opensky_box(*d)),
+            ),
+            points=(("origin", o), ("dest", d)),
+        )
+        if not air_short
+        else {
+            "source": "not-applicable",
+            "live": False,
+            "airborne_origin": None,
+            "airborne_dest": None,
+        }
     )
     readouts["air"] = air
     if air["live"]:
@@ -162,6 +212,7 @@ def build_snapshot(
     else:
         total = None
         delay, delay_prov = DEFAULT_DELAY_HOURS, "estimated-default"
+    delay = _scale_delay(delay, distance)
     legs["air"] = {
         "mode": "air",
         "applicable": True,
@@ -193,6 +244,10 @@ def build_snapshot(
         "on_time_probability": "synthetic-estimate",
         "confidence": "synthetic-estimate",
     }
+    if air_short:
+        legs["air"] = _not_applicable("air", SHORT_AIR_REASON)
+        readouts["air"] = {"source": "not-applicable", "live": False}
+        provenance["air"] = {"delay_hours": "not-applicable"}
 
     # Road: corridor flow, incidents, and a routed truck transit.
     if no_road:
@@ -227,6 +282,7 @@ def build_snapshot(
             road_dist = round(distance * ROAD_DETOUR, 1)
             road_transit = round(road_dist / ROAD_SPEED_KMH + 1, 1)
             delay, delay_prov = DEFAULT_DELAY_HOURS, "estimated-default"
+        delay = _scale_delay(delay, distance)
         legs["road"] = {
             "mode": "road",
             "applicable": True,
@@ -291,6 +347,7 @@ def build_snapshot(
                 delay, delay_prov = DEFAULT_DELAY_HOURS, "estimated-default"
             detail = f"Sampled departures at {stop_name}"
         readouts["rail"] = rail
+        delay = _scale_delay(delay, distance)
         legs["rail"] = {
             "mode": "rail",
             "applicable": True,
@@ -349,14 +406,21 @@ def build_snapshot(
     for mode, finding in findings.items():
         legs[mode]["status"] = finding["status"]
     applicable = [mode for mode in MODE_ORDER if mode in findings]
-    baseline = max(findings[mode]["delay_hours"] for mode in applicable)
+    # Time saved is door-to-door (transit plus delay), so the ranking and
+    # the fastest alternate agree; saving against delay alone would crown
+    # a slow-but-calm leg over a genuinely quicker one.
+    totals = {
+        mode: legs[mode]["transit_hours"] + legs[mode]["delay_hours"]
+        for mode in applicable
+    }
+    baseline = max(totals.values())
     options = [
         {
             "option_id": f"{mode}-leg",
             "title": f"{mode.capitalize()} · {label}",
             "mode": mode,
             "cost_usd": findings[mode]["cost_usd"],
-            "time_saved_hours": baseline - findings[mode]["delay_hours"],
+            "time_saved_hours": round(baseline - totals[mode], 1),
             "on_time_probability": findings[mode]["on_time_probability"],
             "confidence": findings[mode]["confidence"],
         }

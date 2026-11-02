@@ -356,9 +356,52 @@ def test_snapshot_transpacific_excludes_land_legs(monkeypatch):
     assert snap["fastest_alternative"]["mode"] in ("sea", "air")
 
 
+def test_snapshot_short_hop_excludes_sea_and_air(monkeypatch):
+    _patch_live_layers(monkeypatch)
+    snap = snapshot_mod.build_snapshot(
+        {"name": "Baliuag", "lat": 14.95, "lon": 120.90},
+        {"name": "Malolos", "lat": 15.05, "lon": 120.95},
+        "Baliuag → Malolos",
+    )
+    assert snap["legs"]["sea"]["applicable"] is False
+    assert snap["legs"]["air"]["applicable"] is False
+    assert snap["legs"]["sea"]["reason"] != ""
+    assert {o["mode"] for o in snap["ranked_options"]} == {"road", "rail"}
+    assert snap["fastest_alternative"]["mode"] == "road"
+    assert snap["legs"]["road"]["delay_hours"] == 0
+
+
+def test_scale_delay_by_distance():
+    assert snapshot_mod._scale_delay(6, 12.0) == 0
+    assert snapshot_mod._scale_delay(6, 250.0) == 3
+    assert snapshot_mod._scale_delay(6, 975.0) == 6
+    assert snapshot_mod._scale_delay(48, 975.0) == 48
+
+
+def test_snapshot_time_saved_is_door_to_door(monkeypatch):
+    _patch_live_layers(monkeypatch)
+    snap = snapshot_mod.snapshot_for_corridor("north-sea")
+    totals = {
+        mode: snap["legs"][mode]["transit_hours"]
+        + snap["legs"][mode]["delay_hours"]
+        for mode in ("sea", "air", "road", "rail")
+    }
+    baseline = max(totals.values())
+    for option in snap["ranked_options"]:
+        assert option["time_saved_hours"] == round(
+            baseline - totals[option["mode"]], 1
+        )
+
+
 def test_snapshot_custom_places(monkeypatch):
     _patch_live_layers(monkeypatch)
-    monkeypatch.setattr(geo, "geocode", lambda name, timeout=10.0: (name, 50.0, 5.0))
+    coords = {"Alpha": (50.0, 5.0), "Beta": (55.0, 10.0)}
+
+    def fake_geocode(name, timeout=10.0):
+        lat, lon = coords[name]
+        return (name, lat, lon)
+
+    monkeypatch.setattr(geo, "geocode", fake_geocode)
     snap = snapshot_mod.snapshot_for_places("Alpha", "Beta")
     assert snap["label"] == "Alpha → Beta"
     assert len(snap["ranked_options"]) == 4
