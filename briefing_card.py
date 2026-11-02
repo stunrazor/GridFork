@@ -10,33 +10,49 @@ vision/evidence step.
 import ask_box
 
 _CSS = """
+  :root { color-scheme: dark; }
   body { font-family: -apple-system, "Segoe UI", Verdana, sans-serif;
          margin: 2rem auto; max-width: 52rem; padding: 0 1rem;
-         color: #1a1a1a; background: #fff; line-height: 1.45; }
+         color: #f4f7fb; background: #0b1526; line-height: 1.45; }
+  a { color: #7dd3fc; }
   h1 { font-size: 1.4rem; margin-bottom: 0; }
-  .sub { color: #444; margin-top: 0.25rem; }
-  h2 { font-size: 1.05rem; border-bottom: 1px solid #ccc;
+  .sub { color: #c3cede; margin-top: 0.25rem; }
+  h2 { font-size: 1.05rem; border-bottom: 1px solid #2a3a55;
        padding-bottom: 0.25rem; margin-top: 2rem; }
   table { border-collapse: collapse; width: 100%; font-size: 0.9rem; }
-  th, td { border: 1px solid #ccc; padding: 0.35rem 0.5rem; text-align: left; }
-  th { background: #eee; }
-  tr.top td { font-weight: bold; }
+  th, td { border: 1px solid #2a3a55; padding: 0.35rem 0.5rem; text-align: left; }
+  th { background: #1b2942; color: #c3cede; }
+  tr.top td { font-weight: bold; color: #7dd3fc; }
   .pill { display: inline-block; font-size: 0.75rem; font-weight: bold;
           padding: 0.1rem 0.5rem; border: 1px solid #666; }
-  .disrupted { background: #f8d7da; }
-  .degraded { background: #fff3cd; }
-  .available { background: #d4edda; }
-  .rec { border: 2px solid #1a1a1a; padding: 0.75rem 1rem; }
+  .disrupted { background: #b3261e; color: #fff; border-color: #b3261e; }
+  .degraded { background: #8a5a00; color: #fff; border-color: #8a5a00; }
+  .available { background: #1e7e34; color: #fff; border-color: #1e7e34; }
+  .rec { background: #131f33; border: 2px solid #7dd3fc; padding: 0.75rem 1rem; }
   .rec p { margin: 0.3rem 0; }
-  button { font-size: 0.9rem; padding: 0.4rem 0.9rem; cursor: pointer; }
-  img.illus { max-width: 100%; border: 1px solid #ccc; margin-top: 0.5rem; }
-  .note { font-size: 0.85rem; color: #444; }
-  .label { font-size: 0.85rem; color: #444; border-left: 3px solid #666;
+  button { font-size: 0.9rem; padding: 0.4rem 0.9rem; cursor: pointer;
+           background: #1b2942; color: #f4f7fb; border: 1px solid #7dd3fc; }
+  button:active { background: #274067; }
+  input { font-size: 0.9rem; padding: 0.35rem 0.5rem; width: 65%;
+          background: #0b1526; color: #f4f7fb; border: 1px solid #2a3a55; }
+  img.illus { max-width: 100%; border: 1px solid #2a3a55; margin-top: 0.5rem; }
+  .note { font-size: 0.85rem; color: #c3cede; }
+  .ask-out { background: #131f33; border: 1px solid #2a3a55;
+             padding: 0.6rem 0.8rem; margin-top: 0.5rem; min-height: 2.5rem;
+             font-size: 0.9rem; }
+  .label { font-size: 0.85rem; color: #c3cede; border-left: 3px solid #7dd3fc;
            padding-left: 0.6rem; }
-  footer { margin-top: 2rem; font-size: 0.8rem; color: #444;
-           border-top: 1px solid #ccc; padding-top: 0.5rem; }
-  code { background: #f2f2f2; padding: 0 0.25rem; }
-  @media print { button, input { display: none; } }
+  footer { margin-top: 2rem; font-size: 0.8rem; color: #c3cede;
+           border-top: 1px solid #2a3a55; padding-top: 0.5rem; }
+  code { background: #1b2942; padding: 0 0.25rem; }
+  @media print {
+    button, input { display: none; }
+    body { background: #fff; color: #000; }
+    .sub, .note, .label, footer { color: #333; }
+    th { background: #eee; color: #000; }
+    th, td { border-color: #999; }
+    .rec, .ask-out { background: #fff; border-color: #000; }
+  }
 """
 
 _SCRIPT = """
@@ -103,7 +119,7 @@ def render_brief_card(demo: dict) -> str:
         + _CSS
         + "</style>\n</head>\n<body>\n"
         "<h1>GridFork incident brief &mdash; North Sea storm, Rotterdam &rarr; Oslo</h1>\n"
-        f'<p class="sub">Every route. One grid. Zero blind spots. {demo["label"]} '
+        f'<p class="sub">Multi-agent reroute engine across sea, air, road and rail. {demo["label"]} '
         '<a href="/">Home</a>.</p>\n'
         '<p class="note">Shareable page: print to PDF to distribute.</p>\n'
         + ask_box.render_ask_box("brief")

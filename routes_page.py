@@ -57,6 +57,9 @@ _CSS = """
           border: 1px solid #2a3a55; }
   img.illus { max-width: 100%; border: 1px solid #2a3a55; margin-top: 0.5rem; }
   .note { font-size: 0.82rem; color: #c3cede; }
+  .ask-out { background: #131f33; border: 1px solid #2a3a55;
+             padding: 0.6rem 0.8rem; margin-top: 0.5rem; min-height: 2.5rem;
+             font-size: 0.9rem; }
   .label { font-size: 0.82rem; color: #c3cede; border-left: 3px solid #7dd3fc;
            padding-left: 0.6rem; }
   footer { margin-top: 1.5rem; font-size: 0.78rem; color: #c3cede;

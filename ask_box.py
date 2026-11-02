@@ -27,7 +27,7 @@ answered question is a paid call and runs on click only.</p>
 <button id="{prefix}-ask-btn" type="button">Ask</button>
 <button id="{prefix}-ask-talk" type="button">Hold to talk</button>
 <span id="{prefix}-ask-voice" class="note"></span>
-<div id="{prefix}-ask-out" class="note">Not asked yet.</div>
+<div id="{prefix}-ask-out" class="ask-out">Not asked yet.</div>
 """
 
 

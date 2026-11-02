@@ -522,6 +522,20 @@ def test_endpoint_never_grounds_demo(monkeypatch):
     assert body["answer"]["source"] == "guidance"
 
 
+def test_all_views_share_brand_and_ask_panel():
+    pages = [
+        render_grid_page(),
+        render_routes_page(run_demo()),
+        render_storm_lab(),
+        render_brief_card(run_demo()),
+    ]
+    for html in pages:
+        assert "background: #0b1526" in html
+        assert "#7dd3fc" in html
+        assert 'class="ask-out"' in html
+        assert "Zero blind spots" not in html
+
+
 def test_ask_box_shows_grounding():
     from ask_box import render_ask_box, render_ask_script
 

@@ -18,39 +18,47 @@ def render_grid_page() -> str:
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>GridFork live grid &mdash; North Sea storm</title>
 <style>
+  :root { color-scheme: dark; }
   body { font-family: -apple-system, "Segoe UI", Verdana, sans-serif;
          margin: 2rem auto; max-width: 72rem; padding: 0 1rem;
-         color: #1a1a1a; background: #fff; line-height: 1.45; }
+         color: #f4f7fb; background: #0b1526; line-height: 1.45; }
+  a { color: #7dd3fc; }
   h1 { font-size: 1.4rem; margin-bottom: 0; }
-  .sub { color: #444; margin-top: 0.25rem; }
-  h2 { font-size: 1.05rem; border-bottom: 1px solid #ccc;
+  .sub { color: #c3cede; margin-top: 0.25rem; }
+  h2 { font-size: 1.05rem; border-bottom: 1px solid #2a3a55;
        padding-bottom: 0.25rem; margin-top: 2rem; }
   .modes { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.75rem; }
-  .mode { border: 1px solid #ccc; padding: 0.6rem 0.75rem; }
+  .mode { background: #131f33; border: 1px solid #2a3a55; padding: 0.6rem 0.75rem; }
   .mode h3 { margin: 0 0 0.3rem; font-size: 0.95rem; }
   .pill { display: inline-block; font-size: 0.75rem; font-weight: bold;
           padding: 0.1rem 0.5rem; border: 1px solid #666; }
-  .disrupted { background: #f8d7da; }
-  .degraded { background: #fff3cd; }
-  .available { background: #d4edda; }
+  .disrupted { background: #b3261e; color: #fff; border-color: #b3261e; }
+  .degraded { background: #8a5a00; color: #fff; border-color: #8a5a00; }
+  .available { background: #1e7e34; color: #fff; border-color: #1e7e34; }
   table { border-collapse: collapse; width: 100%; font-size: 0.9rem; }
-  th, td { border: 1px solid #ccc; padding: 0.35rem 0.5rem; text-align: left; }
-  th { background: #eee; }
-  tr.top td { font-weight: bold; }
-  button { font-size: 0.9rem; padding: 0.4rem 0.9rem; cursor: pointer; }
-  input { font-size: 0.9rem; padding: 0.35rem 0.5rem; width: 65%; }
+  th, td { border: 1px solid #2a3a55; padding: 0.35rem 0.5rem; text-align: left; }
+  th { background: #1b2942; color: #c3cede; }
+  tr.top td { font-weight: bold; color: #7dd3fc; }
+  button { font-size: 0.9rem; padding: 0.4rem 0.9rem; cursor: pointer;
+           background: #1b2942; color: #f4f7fb; border: 1px solid #7dd3fc; }
+  button:active { background: #274067; }
+  input { font-size: 0.9rem; padding: 0.35rem 0.5rem; width: 65%;
+          background: #0b1526; color: #f4f7fb; border: 1px solid #2a3a55; }
   h3 { font-size: 0.95rem; margin: 1.25rem 0 0.25rem; }
-  img.illus { max-width: 100%; border: 1px solid #ccc; margin-top: 0.5rem; }
-  .note { font-size: 0.85rem; color: #444; }
-  .src { font-size: 0.8rem; color: #444; }
-  footer { margin-top: 2rem; font-size: 0.8rem; color: #444;
-           border-top: 1px solid #ccc; padding-top: 0.5rem; }
-  code { background: #f2f2f2; padding: 0 0.25rem; }
+  img.illus { max-width: 100%; border: 1px solid #2a3a55; margin-top: 0.5rem; }
+  .note { font-size: 0.85rem; color: #c3cede; }
+  .ask-out { background: #131f33; border: 1px solid #2a3a55;
+             padding: 0.6rem 0.8rem; margin-top: 0.5rem; min-height: 2.5rem;
+             font-size: 0.9rem; }
+  .src { font-size: 0.8rem; color: #c3cede; }
+  footer { margin-top: 2rem; font-size: 0.8rem; color: #c3cede;
+           border-top: 1px solid #2a3a55; padding-top: 0.5rem; }
+  code { background: #1b2942; padding: 0 0.25rem; }
 </style>
 </head>
 <body>
 <h1>GridFork live grid &mdash; North Sea storm, Rotterdam &rarr; Oslo</h1>
-<p class="sub">Every route. One grid. Zero blind spots. Legs measured live; costs stay synthetic estimates.
+<p class="sub">Multi-agent reroute engine: live traffic, weather &amp; disruption data across sea, air, road and rail. Legs measured live; costs stay synthetic estimates.
 Open the <a href="/demo/north-sea-storm/brief-card">shareable incident brief</a>,
 the <a href="/demo/storm-lab">Storm Scenario Lab</a>, the
 <a href="/demo/routes">route briefing</a>, or <a href="/">home</a>.</p>
