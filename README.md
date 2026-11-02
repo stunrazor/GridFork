@@ -1,6 +1,7 @@
 # GridFork
 
-Every Route. One Grid. Zero Blind Spots.
+Multi-agent reroute engine: live traffic, weather & disruption data across
+sea, air, road and rail, scored by cost, time saved and on-time odds.
 
 GridFork is a multi-agent cascade evaluation demo for multi-modal logistics
 (sea, air, road, rail), built for the Meta Global AI Developer Hackathon
