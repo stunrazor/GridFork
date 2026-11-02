@@ -9,7 +9,7 @@ _PAGE = """<!DOCTYPE html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>GridFork &mdash; every route, one grid</title>
+<title>GridFork &mdash; multi-agent reroute engine</title>
 <style>
   :root { color-scheme: dark; }
   body { font-family: -apple-system, "Segoe UI", Verdana, sans-serif;
@@ -37,7 +37,9 @@ _PAGE = """<!DOCTYPE html>
 </head>
 <body>
 <h1>GridFork</h1>
-<p class="sub">Every route. One grid. Zero blind spots.
+<p class="sub">Multi-agent reroute engine: live traffic, weather &amp;
+disruption data across sea, air, road and rail, scored by cost, time
+saved and on-time odds.
 <span class="badge">LIVE DATA &middot; LABELED ESTIMATES</span></p>
 
 <div class="cards">
