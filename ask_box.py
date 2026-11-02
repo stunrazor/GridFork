@@ -17,8 +17,9 @@ def render_ask_box(prefix: str, heading: str = "Ask GridFork") -> str:
     which pages append after their main script block.
     """
     return f"""<h2>{heading}</h2>
-<p class="note">Ask about this incident, the ranking, delays, costs, or data
-sources. Each question is a paid Muse Spark call; runs on click only.</p>
+<p class="note">Ask about traffic, disruptions, costs, or the ranking.
+Scenario and why-questions go to Muse Wonder, facts to Muse Spark; each
+question is a paid call and runs on click only.</p>
 <input id="{prefix}-ask-input" maxlength="500" value="Which option is cheapest and what does it trade off?">
 <button id="{prefix}-ask-btn" type="button">Ask</button>
 <div id="{prefix}-ask-out" class="note">Not asked yet.</div>
@@ -38,8 +39,11 @@ document.getElementById("{prefix}-ask-btn").addEventListener("click", async () =
     if (!res.ok) {{ el.textContent = "Request failed: HTTP " + res.status + "."; return; }}
     const body = await res.json();
     const ans = body.answer;
-    el.textContent = ans.text ? "[" + ans.source + "] " + ans.text
-      : "[" + ans.source + "] " + ans.detail;
+    const fa = body.fastest_alternative;
+    const first = "Fastest alternate: " + fa.option_id +
+      " (" + fa.total_hours + "h total). ";
+    el.textContent = ans.text ? first + "[" + ans.source + "] " + ans.text
+      : first + "[" + ans.source + "] " + ans.detail;
   }} catch (e) {{ el.textContent = "Request failed."; }}
 }});
 </script>

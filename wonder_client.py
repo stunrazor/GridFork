@@ -21,6 +21,8 @@ import re
 
 import httpx
 
+import spark_client
+
 # Documented endpoint and model identifier. Do not change without checking
 # https://dev.meta.ai/docs/models and https://dev.meta.ai/docs/api-reference.
 CHAT_COMPLETIONS_URL = "https://api.meta.ai/v1/chat/completions"
@@ -238,6 +240,58 @@ def build_whatif_prompt(
         )
     lines.append(f"Question: {question.strip()}")
     return "\n".join(lines)
+
+
+def build_wonder_ask_prompt(
+    question: str,
+    findings: list[dict],
+    ranked_options: list[dict],
+    live: dict | None = None,
+) -> str:
+    """Build an explanation-style Q&A prompt over the same grounding data."""
+    lines = [
+        "Explain the answer to the question below about this North Sea storm",
+        "freight reroute: say what follows from the data and why, in at most",
+        "four sentences. Reason only from the ranking and findings given;",
+        "if the question needs data not present here, or is not about this",
+        'incident and ranking, start the answer with "Out of scope:" and say why.',
+        "",
+    ]
+    lines.extend(spark_client.build_ask_context(findings, ranked_options, live))
+    lines.append(f"Question: {question}")
+    return "\n".join(lines)
+
+
+def answer_ask(
+    question: str,
+    findings: list[dict],
+    ranked_options: list[dict],
+    live: dict | None = None,
+) -> dict:
+    """Answer one question via Muse Wonder, or report setup/unavailable."""
+    api_key = os.environ.get(API_KEY_ENV_VAR)
+    if not api_key:
+        return {
+            "source": "setup-required",
+            "model": MODEL_ID,
+            "text": None,
+            "detail": (
+                f"No API key: set {API_KEY_ENV_VAR} to ask {MODEL_ID}."
+            ),
+        }
+    try:
+        text = fetch_wonder_text(
+            build_wonder_ask_prompt(question, findings, ranked_options, live=live),
+            api_key,
+        )
+    except Exception:
+        return {
+            "source": "unavailable",
+            "model": MODEL_ID,
+            "text": None,
+            "detail": "Muse Wonder call failed; no answer produced.",
+        }
+    return {"source": "muse-wonder", "model": MODEL_ID, "text": text}
 
 
 def parse_whatif_response(text: str) -> dict:

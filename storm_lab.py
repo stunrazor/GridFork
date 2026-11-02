@@ -42,7 +42,7 @@ _PAGE = """<!DOCTYPE html>
 Every live call below runs only when you click. <a href="/">Home</a> &middot;
 <a href="/demo/grid">Back to the grid</a>.</p>
 
-<h2>1. Scenario question</h2>
+""" + ask_box.render_ask_box("lab") + """<h2>1. Scenario question</h2>
 <p class="note">Type a what-if, or hold the talk button to dictate it. The
 microphone is used only while you hold the button; nothing is recorded
 automatically.</p>
@@ -69,7 +69,7 @@ SAM 3.1 segmentation.</p>
 <button id="lab-illus-btn" type="button">Generate illustration</button>
 <div id="lab-illustration" class="note">Not generated yet.</div>
 
-""" + ask_box.render_ask_box("lab", "4. Ask GridFork") + """<footer>
+<footer>
 <p>Sources: deterministic scoring (always) &middot; Muse Wonder assumptions
 (<code>muse-wonder</code> live, <code>deterministic</code> offline) &middot;
 Muse Voice transcription (<code>muse-voice-transcribe</code> live,

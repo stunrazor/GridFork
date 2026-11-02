@@ -46,7 +46,7 @@ quantified reroutes on Cost, Time Saved, On-Time Probability, and Confidence.
 - `GET /demo/north-sea-storm/vision` — plus SAM ground truth (`?image_url=`)
 - `GET /demo/north-sea-storm/weather` — live wind or labeled fallback
 - `GET /demo/north-sea-storm/live` — live snapshot: measured waves/wind drive the sea leg, Phase 2 air/road/rail layers join when keyed, per-field provenance included
-- `GET /demo/north-sea-storm/ask?q=...` — one grounded question about the incident and ranking (Muse Spark, paid per question, setup-required offline)
+- `GET /demo/north-sea-storm/ask?q=...` — one question about traffic, disruptions, and the ranking, grounded in the live snapshot. Routes scenario/why-questions to Wonder and facts to Spark (paid per question, setup-required offline) and always reports the deterministic fastest alternate across all four modes
 - `GET /demo/north-sea-storm/brief` — plus Muse Wonder decision explanation
 - `GET /demo/north-sea-storm/image` — plus Muse Image illustration
 - `GET /demo/north-sea-storm/openweights?model=` — Spark Open / Glimmer runner setup status (`spark-open`, `glimmer`)

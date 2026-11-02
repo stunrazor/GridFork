@@ -106,7 +106,8 @@ def render_brief_card(demo: dict) -> str:
         f'<p class="sub">Every route. One grid. Zero blind spots. {demo["label"]} '
         '<a href="/">Home</a>.</p>\n'
         '<p class="note">Shareable page: print to PDF to distribute.</p>\n'
-        "<h2>Recommendation</h2>\n"
+        + ask_box.render_ask_box("brief")
+        + "<h2>Recommendation</h2>\n"
         '<div class="rec">\n'
         f'<p><strong>{top["option_id"]}</strong> &mdash; {top["title"]}</p>\n'
         f'<p>Score {top["score"]} &middot; ${top["cost_usd"]} '
@@ -132,8 +133,7 @@ def render_brief_card(demo: dict) -> str:
         '<button id="illus-btn" type="button">Generate illustration</button>\n'
         '<div id="illustration" class="note">Not generated yet. Paid Muse Image '
         "call; runs on demand only.</div>\n"
-        + ask_box.render_ask_box("brief")
-        + "<footer>\n<p>Sources: deterministic scoring (always) &middot; "
+        "<footer>\n<p>Sources: deterministic scoring (always) &middot; "
         "illustration via <code>/demo/north-sea-storm/image</code> "
         "(<code>source: muse-image</code> live, "
         "<code>unavailable</code> offline) &middot; SAM 3.1 segmentation is "

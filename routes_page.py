@@ -362,6 +362,8 @@ def render_routes_page(demo: dict) -> str:
         '<span class="badge">DETERMINISTIC SCORING</span> '
         '<a href="/">Home</a></p>\n'
         "</header>\n"
+        + ask_box.render_ask_box("rt")
+        + '<div class="kpi-strip">\n'
         '<div class="kpi-strip">\n'
         f'<div class="kpi"><div class="k">Score</div><div class="v">{top["score"]}</div></div>\n'
         f'<div class="kpi"><div class="k">Cost</div><div class="v">${top["cost_usd"]}</div></div>\n'
@@ -424,9 +426,6 @@ def render_routes_page(demo: dict) -> str:
         '<button id="rt-illus-btn" type="button">Generate illustration</button>\n'
         '<div id="rt-illustration" class="note">Not generated yet.</div>\n'
         "</div>\n"
-        '<div class="panel">\n'
-        + ask_box.render_ask_box("rt")
-        + "</div>\n"
         "</div>\n"
         "<footer>\n<p>Sources: deterministic scoring (always) &middot; brief "
         "summary (Spark live, deterministic offline) &middot; SAM 3.1 "

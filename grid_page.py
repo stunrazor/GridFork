@@ -55,7 +55,7 @@ Open the <a href="/demo/north-sea-storm/brief-card">shareable incident brief</a>
 the <a href="/demo/storm-lab">Storm Scenario Lab</a>, the
 <a href="/demo/routes">route briefing</a>, or <a href="/">home</a>.</p>
 
-<h2>Specialist findings</h2>
+""" + ask_box.render_ask_box("grid") + """<h2>Specialist findings</h2>
 <div class="modes" id="modes"><p class="note">Loading&hellip;</p></div>
 
 <h2>Ranked reroutes</h2>
@@ -120,7 +120,7 @@ and tokens. Runs on demand; local inference can take minutes.</p>
 <button id="challenge-btn" type="button">Run route challenge</button>
 <div id="challenge" class="note">Not run yet.</div>
 
-""" + ask_box.render_ask_box("grid") + """<footer>
+<footer>
 <p>Sources: deterministic scoring (always) &middot; Muse Spark summary
 (<code>source: muse-spark</code> live, <code>deterministic</code> offline) &middot;
 SAM 3.1 segmentation (<code>source: sam-3.1</code> live,

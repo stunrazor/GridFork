@@ -84,11 +84,19 @@ def fetch_spark_summary(prompt: str, api_key: str, timeout: float = 30.0) -> str
     return str(response.json()["choices"][0]["message"]["content"])
 
 
-def build_ask_prompt(question: str, findings: list[dict], ranked_options: list[dict]) -> str:
+def build_ask_prompt(
+    question: str,
+    findings: list[dict],
+    ranked_options: list[dict],
+    live: dict | None = None,
+) -> str:
     """Build a grounded Q&A prompt over the ranking and findings.
 
     The model answers only from the data below; anything else — other
     incidents, live prices, advice beyond this ranking — is out of scope.
+    When ``live`` carries the snapshot readouts, measured conditions and
+    per-mode provenance join the prompt so traffic and disruption
+    questions get measured answers.
     """
     lines = [
         "Answer the question below about this North Sea storm freight reroute.",
@@ -96,8 +104,17 @@ def build_ask_prompt(question: str, findings: list[dict], ranked_options: list[d
         "If the question needs data not present here, or is not about this",
         'incident and ranking, start the answer with "Out of scope:" and say why.',
         "",
-        "Ranking:",
     ]
+    lines.extend(build_ask_context(findings, ranked_options, live))
+    lines.append(f"Question: {question}")
+    return "\n".join(lines)
+
+
+def build_ask_context(
+    findings: list[dict], ranked_options: list[dict], live: dict | None = None
+) -> list[str]:
+    """Shared grounding block: ranking, findings, and live conditions."""
+    lines = ["Ranking:"]
     for option in ranked_options:
         lines.append(
             f"Rank {option['rank']}: {option['option_id']} "
@@ -114,11 +131,52 @@ def build_ask_prompt(question: str, findings: list[dict], ranked_options: list[d
             f"+{finding['delay_hours']}h delay, cost ${finding['cost_usd']}, "
             f"on-time {finding['on_time_probability']}. {finding['summary']}"
         )
-    lines.append(f"Question: {question}")
-    return "\n".join(lines)
+    if live:
+        lines.append("Live conditions (measured now, with sources):")
+        lines.extend(_live_condition_lines(live))
+    return lines
 
 
-def answer_question(question: str, findings: list[dict], ranked_options: list[dict]) -> dict:
+def _live_condition_lines(live: dict) -> list[str]:
+    """Compact measured-condition lines plus delay provenance per mode."""
+    marine = live.get("marine", {})
+    wind = live.get("wind", {})
+    air = live.get("air", {})
+    road = live.get("road", {})
+    rail = live.get("rail", {})
+    lines = [
+        f"sea: {marine.get('wave_height_m')}m waves [{marine.get('source')}], "
+        f"{wind.get('wind_kph')}kph wind [{wind.get('source')}].",
+        f"air: {air.get('airborne_ams')}+{air.get('airborne_osl')} airborne "
+        f"[AMS+OSL, {air.get('source')}].",
+    ]
+    incidents = road.get("incidents") or {}
+    route = road.get("route") or {}
+    lines.append(
+        f"road: worst flow ratio {road.get('worst_ratio')}, "
+        f"{incidents.get('count')} incidents "
+        f"({incidents.get('closures')} closures), routed "
+        f"{route.get('transit_hours')}h [{road.get('source')}]."
+    )
+    lines.append(
+        f"rail: {rail.get('active_count')} active, "
+        f"{rail.get('severe_count')} severe [{rail.get('source')}]."
+    )
+    provenance = live.get("provenance", {})
+    delays = ", ".join(
+        f"{mode}={provenance.get(mode, {}).get('delay_hours')}"
+        for mode in ("sea", "air", "road", "rail")
+    )
+    lines.append(f"Delay provenance: {delays}.")
+    return lines
+
+
+def answer_question(
+    question: str,
+    findings: list[dict],
+    ranked_options: list[dict],
+    live: dict | None = None,
+) -> dict:
     """Answer one question via Muse Spark, or report setup/unavailable."""
     api_key = os.environ.get(API_KEY_ENV_VAR)
     if not api_key:
@@ -132,7 +190,7 @@ def answer_question(question: str, findings: list[dict], ranked_options: list[di
         }
     try:
         text = fetch_spark_summary(
-            build_ask_prompt(question, findings, ranked_options), api_key
+            build_ask_prompt(question, findings, ranked_options, live=live), api_key
         )
     except Exception:
         return {

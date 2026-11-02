@@ -268,26 +268,112 @@ def apply_whatif_assumptions(scenario: dict, assumptions: list[dict]) -> dict:
 
 MAX_ASK_CHARS = 500
 
+# Scenario/explanation questions go to Wonder; everything else (costs,
+# delays, statuses, sources) goes to Spark. Matched on padded lowercase
+# text so short triggers need word boundaries ("why", not "anyway").
+WONDER_TRIGGERS = (
+    "what if",
+    "whatif",
+    "suppose",
+    "scenario",
+    "explain",
+    "why",
+    "reason",
+    "cascade",
+    "predict",
+    "forecast",
+    "would happen",
+    "impact of",
+)
+
+# Representative ranked option per mode for the fastest-alternate readout.
+MODE_OPTION_IDS = {
+    "sea": "sea-wait",
+    "air": "air-lift",
+    "road": "road-reroute",
+    "rail": "rail-reroute",
+}
+
+
+def route_ask(question: str) -> tuple[str, str]:
+    """Route a question to a model, returning (model, reason)."""
+    padded = f" {(question or '').lower()} "
+    for trigger in WONDER_TRIGGERS:
+        if f" {trigger} " in padded or padded.strip().startswith(trigger + " "):
+            return "wonder", f"matched '{trigger}'"
+    return "spark", "default factual routing"
+
+
+def fastest_alternative(scenario: dict) -> dict:
+    """Fastest mode by total journey time (transit plus delay hours).
+
+    Deterministic over the snapshot slices; ties resolve in
+    sea/air/road/rail order. Sea transit comes from the baseline plan.
+    """
+    modes = scenario["modes"]
+    totals = {}
+    for mode in ("sea", "air", "road", "rail"):
+        transit = (
+            scenario["baseline"]["planned_sea_transit_hours"]
+            if mode == "sea"
+            else modes[mode]["transit_hours"]
+        )
+        totals[mode] = (transit, modes[mode]["delay_hours"])
+    # min keeps the first minimal item: dict order is sea/air/road/rail.
+    mode = min(totals, key=lambda m: totals[m][0] + totals[m][1])
+    transit, delay = totals[mode]
+    return {
+        "mode": mode,
+        "option_id": MODE_OPTION_IDS[mode],
+        "total_hours": round(transit + delay, 1),
+        "transit_hours": transit,
+        "delay_hours": delay,
+    }
+
 
 def run_ask(question: str) -> dict:
     """Answer one question about the incident via Muse Spark.
 
-    The model answers only from the deterministic ranking and findings
-    (see :func:`spark_client.build_ask_prompt`); without a key or on
-    failure the answer reports ``setup-required`` / ``unavailable`` with
-    no invented text. Raises ValueError on a blank or overlong question.
+    The model answers only from the live snapshot — ranking, findings,
+    measured conditions, and provenance (see
+    :func:`spark_client.build_ask_prompt`); without a key or on failure
+    the answer reports ``setup-required`` / ``unavailable`` with no
+    invented text. Raises ValueError on a blank or overlong question.
     """
     asked = (question or "").strip()
     if not asked:
         raise ValueError("Ask a question about this incident and ranking.")
     if len(asked) > MAX_ASK_CHARS:
         raise ValueError(f"Question exceeds the {MAX_ASK_CHARS}-character cap.")
-    demo = run_demo()
+    scenario, provenance, marine, wind, air, road, rail = _snapshot_parts()
+    findings = collect_findings(scenario)
+    options = build_options(
+        findings, scenario["baseline"]["storm_delay_hours_if_waiting"]
+    )
+    ranked = score_options(options)
+    live = {
+        "provenance": provenance,
+        "marine": marine,
+        "wind": wind,
+        "air": air,
+        "road": road,
+        "rail": rail,
+    }
+    routed_to, reason = route_ask(asked)
+    if routed_to == "wonder":
+        answer = wonder_client.answer_ask(
+            asked, findings, ranked, live=live
+        )
+    else:
+        answer = spark_client.answer_question(
+            asked, findings, ranked, live=live
+        )
     return {
         "question": asked,
-        "answer": spark_client.answer_question(
-            asked, demo["findings"], demo["ranked_options"]
-        ),
+        "routed_to": routed_to,
+        "reason": reason,
+        "answer": answer,
+        "fastest_alternative": fastest_alternative(scenario),
     }
 
 
@@ -602,9 +688,7 @@ def run_live_snapshot() -> dict:
     demo exactly, with every sea field marked synthetic-fallback and each
     Phase 2 layer reporting setup-required.
     """
-    scenario, provenance, marine, wind = build_live_scenario()
-    air, road, rail = fetch_phase2_layers()
-    apply_phase2_layers(scenario, provenance, air, road, rail)
+    scenario, provenance, marine, wind, air, road, rail = _snapshot_parts()
     findings = collect_findings(scenario)
     options = build_options(findings, scenario["baseline"]["storm_delay_hours_if_waiting"])
     return {
@@ -621,6 +705,14 @@ def run_live_snapshot() -> dict:
         "findings": findings,
         "ranked_options": score_options(options),
     }
+
+
+def _snapshot_parts() -> tuple:
+    """Fetch and apply all live layers; shared by snapshot and ask."""
+    scenario, provenance, marine, wind = build_live_scenario()
+    air, road, rail = fetch_phase2_layers()
+    apply_phase2_layers(scenario, provenance, air, road, rail)
+    return scenario, provenance, marine, wind, air, road, rail
 
 
 # Phase 2 live data: measured air/road/rail conditions drive those slices
