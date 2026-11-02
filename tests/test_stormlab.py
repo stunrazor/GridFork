@@ -34,13 +34,15 @@ def test_lab_runs_everything_on_demand_only():
     script = html.split("<script>", 1)[1]
     for path in (
         "/demo/north-sea-storm/whatif?q=",
-        "/demo/north-sea-storm/transcribe",
         "/demo/north-sea-storm/challenge?models=",
         "/demo/north-sea-storm/image",
     ):
         assert script.count(path) == 1
-    # Microphone is touched only inside the push-to-talk handler.
-    assert script.count("getUserMedia") == 1
+    # Two mics, each touched only inside its own hold-to-talk handler:
+    # what-if dictation and Ask dictation.
+    assert script.count("/demo/north-sea-storm/transcribe") == 2
+    assert script.count("getUserMedia") == 2
+    assert script.count("pointerdown") == 2
 
 
 def test_lab_labels_advisory_illustrative_and_synthetic():

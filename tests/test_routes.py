@@ -59,13 +59,15 @@ def test_every_live_call_is_click_gated():
     for path in (
         "/demo/north-sea-storm/vision",
         "/demo/north-sea-storm/whatif?q=",
-        "/demo/north-sea-storm/transcribe",
         "/demo/north-sea-storm/challenge?models=",
         "/demo/north-sea-storm/image",
         "/demo/north-sea-storm/summary",
     ):
         assert script.count(path) == 1
-    assert script.count("getUserMedia") == 1
+    # Two hold-gated mics: what-if dictation and Ask dictation.
+    assert script.count("/demo/north-sea-storm/transcribe") == 2
+    assert script.count("getUserMedia") == 2
+    assert script.count("pointerdown") == 2
     assert "addEventListener" in script
 
 
