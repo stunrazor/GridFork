@@ -96,3 +96,16 @@ def test_endpoint_returns_routes_page():
 
 def test_grid_page_links_to_routes():
     assert 'href="/demo/routes"' in render_grid_page()
+
+
+def test_layout_has_balanced_divs():
+    html = _page()
+    body = html.split("<body>", 1)[1]
+    assert body.count("<div") == body.count("</div>")
+
+
+def test_hero_leads_and_kpis_follow():
+    html = _page()
+    assert html.index("rt-hero-title") < html.index("rt-kpi-score")
+    assert html.index("rt-kpi-otp") < html.index("rt-live-values-btn")
+    assert html.index("rt-live-values-note") < html.index("Route comparison")

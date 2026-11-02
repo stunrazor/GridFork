@@ -485,16 +485,7 @@ def render_routes_page(demo: dict) -> str:
         '<a href="/">Home</a></p>\n'
         "</header>\n"
         + ask_box.render_ask_box("rt")
-        + '<div class="kpi-strip">\n'
-        '<div class="kpi-strip">\n'
-        f'<div class="kpi"><div class="k">Score</div><div class="v" id="rt-kpi-score">{top["score"]}</div></div>\n'
-        f'<div class="kpi"><div class="k">Cost</div><div class="v" id="rt-kpi-cost">${top["cost_usd"]}</div></div>\n'
-        f'<div class="kpi"><div class="k">Time saved</div><div class="v" id="rt-kpi-saved">{top["time_saved_hours"]}h</div></div>\n'
-        f'<div class="kpi"><div class="k">On-time</div><div class="v" id="rt-kpi-otp">{top["on_time_probability"]}</div></div>\n'
-        "</div>\n"
-        '<p><button id="rt-live-values-btn" type="button">Refresh live values</button>\n'
-        '<span id="rt-live-values-note" class="note">Loading live values…</span></p>\n'
-        '<div class="hero">\n'
+        + '<div class="hero">\n'
         f'<h2 id="rt-hero-title">Recommended: {top["option_id"]} &mdash; {top["title"]}</h2>\n'
         f'<p class="nums" id="rt-hero-nums">Score {top["score"]} &middot; ${top["cost_usd"]} '
         f'&middot; saves {top["time_saved_hours"]}h '
@@ -507,6 +498,14 @@ def render_routes_page(demo: dict) -> str:
         f'&middot; confidence {second["confidence"]}</p>\n'
         f'<p id="rt-tradeoff">{_tradeoff_line(ranked)}</p>\n'
         "</div>\n"
+        '<div class="kpi-strip">\n'
+        f'<div class="kpi"><div class="k">Score</div><div class="v" id="rt-kpi-score">{top["score"]}</div></div>\n'
+        f'<div class="kpi"><div class="k">Cost</div><div class="v" id="rt-kpi-cost">${top["cost_usd"]}</div></div>\n'
+        f'<div class="kpi"><div class="k">Time saved</div><div class="v" id="rt-kpi-saved">{top["time_saved_hours"]}h</div></div>\n'
+        f'<div class="kpi"><div class="k">On-time</div><div class="v" id="rt-kpi-otp">{top["on_time_probability"]}</div></div>\n'
+        "</div>\n"
+        '<p><button id="rt-live-values-btn" type="button">Refresh live values</button>\n'
+        '<span id="rt-live-values-note" class="note">Loading live values…</span></p>\n'
         '<div class="main-grid">\n'
         '<div class="panel">\n<h2>Route comparison</h2>\n<table>\n'
         "<tr><th>#</th><th>Option</th><th>Score</th><th>Cost</th>"
