@@ -58,7 +58,7 @@ _PAGE = """<!DOCTYPE html>
 </head>
 <body>
 <h1>GridFork scenario lab</h1>
-<p class="sub">Optional workbench beside the live grid. Live data with labeled synthetic estimates.
+<p class="sub">Optional workbench beside the live grid. Live data with labeled estimates.
 Every live call below runs only when you click. <a href="/">Home</a> &middot;
 <a href="/demo/grid">Back to the grid</a>.</p>
 

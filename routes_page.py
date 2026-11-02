@@ -294,8 +294,8 @@ async function rtLoadLiveValues() {
     const snap = await getJSON("/demo/north-sea-storm/live");
     rtAskSnapshot(snap);
     rtSetCorridor(snap);
-    el.textContent = "Showing live measured values. Schematic stays storm-scenario.";
-  } catch (e) { el.textContent = "Live fetch failed (" + e + "); showing storm scenario values."; }
+    el.textContent = "Showing live measured values.";
+  } catch (e) { el.textContent = "Live fetch failed (" + e + "); showing baseline values."; }
 }
 function rtAskSnapshot(snap) {
   const el = document.getElementById("rt-live-values-note");
@@ -331,7 +331,18 @@ function rtAskSnapshot(snap) {
       });
       body.appendChild(tr);
     });
-    el.textContent = "Tables show the asked corridor (" + snap.label + "). Schematic stays storm-scenario.";
+    const fills = {"disrupted": "#ff6b6b", "degraded": "#f5b942", "available": "#4ade80"};
+    snap.findings.forEach(f => {
+      const bar = document.getElementById("rt-schem-" + f.mode + "-bar");
+      const tag = document.getElementById("rt-schem-" + f.mode + "-text");
+      if (!bar || !tag) return;
+      const w = Math.max(4, Math.round(f.delay_hours / 48 * 300));
+      bar.setAttribute("width", w);
+      bar.setAttribute("fill", fills[f.status]);
+      tag.setAttribute("x", 70 + w);
+      tag.textContent = "+" + f.delay_hours + "h " + f.status;
+    });
+    el.textContent = "Tables show the asked corridor (" + snap.label + ").";
 }
 document.getElementById("rt-live-values-btn").addEventListener("click", rtLoadLiveValues);
 rtLoadLiveValues();
@@ -385,8 +396,10 @@ def _schematic(findings: list[dict]) -> str:
         fill = _STATUS_FILL[finding["status"]]
         rows.append(
             f'<text x="0" y="{y + 12}">{finding["mode"]}</text>'
-            f'<rect x="60" y="{y}" width="{width}" height="16" fill="{fill}"/>'
-            f'<text class="dim" x="{70 + width}" y="{y + 12}">'
+            f'<rect id="rt-schem-{finding["mode"]}-bar" x="60" y="{y}" '
+            f'width="{width}" height="16" fill="{fill}"/>'
+            f'<text id="rt-schem-{finding["mode"]}-text" class="dim" '
+            f'x="{70 + width}" y="{y + 12}">'
             f'+{finding["delay_hours"]}h {finding["status"]}</text>'
         )
         y += 28
@@ -501,7 +514,7 @@ def render_routes_page(demo: dict) -> str:
         "segmentation (live, unavailable offline) &middot; Wonder assumptions "
         "&middot; Voice transcription &middot; open weights (local, "
         "setup-required, or mock) &middot; Muse Image illustration. "
-        "Costs and probabilities are synthetic demo data; legs measured with "
+        "Costs and probabilities are modeled estimates; legs measured with "
         "provenance.</p>\n</footer>\n" + _SCRIPT
         + ask_box.render_ask_script("rt")
         + "</body>\n</html>\n"

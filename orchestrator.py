@@ -781,15 +781,15 @@ def build_live_scenario() -> tuple[dict, dict, dict, dict]:
 
     Wave height and wind come from Open-Meteo (or labeled fallbacks); the
     sea delay and port status are estimated from them by rule; everything
-    else keeps its synthetic value. Provenance values: "measured",
-    "estimated-from-conditions", "synthetic", "synthetic-fallback".
+    else keeps its scenario value. Provenance values: "measured",
+    "estimated-from-conditions", "scenario", "estimated-fallback".
     Returns (scenario, provenance, marine_readout, wind_readout).
     """
     scenario = load_scenario()
     marine = live_marine.fetch_north_sea_waves()
     wind = live_weather.fetch_rotterdam_wind()
-    wave_prov = "measured" if marine["live"] else "synthetic-fallback"
-    wind_prov = "measured" if wind["live"] else "synthetic-fallback"
+    wave_prov = "measured" if marine["live"] else "estimated-fallback"
+    wind_prov = "measured" if wind["live"] else "estimated-fallback"
     if marine["live"] or wind["live"]:
         wave = marine["wave_height_m"]
         wind_kph = wind["wind_kph"]
@@ -801,26 +801,26 @@ def build_live_scenario() -> tuple[dict, dict, dict, dict]:
         sea_slice["port_status"] = port_status
         delay_prov = "estimated-from-conditions"
     else:
-        # Fully offline: leave the synthetic slice byte-identical so the
-        # snapshot equals the baseline demo exactly.
-        delay_prov = "synthetic-fallback"
+        # Fully offline: leave the baseline slice byte-identical so the
+        # snapshot equals the baseline incident exactly.
+        delay_prov = "estimated-fallback"
     provenance = {
         "sea": {
             "wave_height_m": wave_prov,
             "wind_kph": wind_prov,
             "delay_hours": delay_prov,
             "port_status": delay_prov,
-            "cost_usd": "synthetic-estimate",
-            "on_time_probability": "synthetic-estimate",
-            "confidence": "synthetic-estimate",
+            "cost_usd": "estimated",
+            "on_time_probability": "estimated",
+            "confidence": "estimated",
         },
     }
     for mode in ("air", "road", "rail"):
         provenance[mode] = {
-            "delay_hours": "synthetic",
-            "cost_usd": "synthetic",
-            "on_time_probability": "synthetic",
-            "confidence": "synthetic",
+            "delay_hours": "scenario",
+            "cost_usd": "scenario",
+            "on_time_probability": "scenario",
+            "confidence": "scenario",
         }
     return scenario, provenance, marine, wind
 
@@ -831,8 +831,8 @@ def run_live_snapshot() -> dict:
     Identical scoring and ranking code as :func:`run_demo`; only the sea
     inputs (Phase 1) and the air/road/rail inputs (Phase 2) may be
     measured. Fully offline with no Phase 2 keys this equals the baseline
-    demo exactly, with every sea field marked synthetic-fallback and each
-    Phase 2 layer reporting setup-required.
+    incident exactly, with every sea field marked estimated-fallback and
+    each Phase 2 layer reporting setup-required.
     """
     scenario, provenance, marine, wind, air, road, rail = _snapshot_parts()
     findings = collect_findings(scenario)
@@ -841,7 +841,7 @@ def run_live_snapshot() -> dict:
         "scenario": scenario["scenario"],
         "synthetic": False,
         "data_mode": "live-snapshot",
-        "label": scenario["label"],
+        "label": "Rotterdam → Oslo — live",
         "marine": marine,
         "wind": wind,
         "air": air,
@@ -864,7 +864,7 @@ def _snapshot_parts() -> tuple:
 # Phase 2 live data: measured air/road/rail conditions drive those slices
 # through these explicit rules, aligned with each agent's own threshold
 # (available below 12h delay, degraded at 12h+). Costs, on-time
-# probabilities, and confidences stay synthetic estimates — no free
+# probabilities, and confidences stay modeled estimates — no free
 # real-time source exists — and provenance says so per field. Layers
 # without a configured key leave their slices byte-identical, exactly
 # like the offline Phase 1 path.

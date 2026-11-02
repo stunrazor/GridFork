@@ -74,7 +74,7 @@ def test_every_live_call_is_click_gated():
 def test_badges_and_honest_labels():
     html = _page()
     lowered = html.lower()
-    assert "synthetic demo data" in lowered
+    assert "modeled estimates" in lowered
     assert "advisory" in lowered
     assert "illustrative" in lowered
     assert "deterministic" in lowered

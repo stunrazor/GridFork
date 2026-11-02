@@ -104,7 +104,7 @@ def _patch_offline(monkeypatch):
         live_marine,
         "fetch_waves_at",
         lambda lat, lon, timeout=10.0: {
-            "source": "synthetic-fallback",
+            "source": "estimated-fallback",
             "live": False,
             "wave_height_m": 1.0,
             "observed_at": None,
@@ -114,7 +114,7 @@ def _patch_offline(monkeypatch):
         live_weather,
         "fetch_wind_at",
         lambda lat, lon, timeout=10.0: {
-            "source": "synthetic-fallback",
+            "source": "estimated-fallback",
             "live": False,
             "wind_kph": 20.0,
             "observed_at": None,
@@ -124,7 +124,7 @@ def _patch_offline(monkeypatch):
         live_air,
         "fetch_air_traffic",
         lambda timeout=10.0, boxes=None, points=None: {
-            "source": "synthetic-fallback",
+            "source": "estimated-fallback",
             "live": False,
             "airborne_origin": None,
             "airborne_dest": None,
@@ -135,7 +135,7 @@ def _patch_offline(monkeypatch):
         live_road,
         "fetch_corridor_congestion",
         lambda timeout=10.0, points=(), origin=(), dest=(): {
-            "source": "synthetic-fallback",
+            "source": "estimated-fallback",
             "live": False,
             "worst_ratio": None,
             "points": [],
@@ -148,7 +148,7 @@ def _patch_offline(monkeypatch):
         live_rail,
         "fetch_entur_disruptions",
         lambda timeout=10.0, stop_id="x": {
-            "source": "synthetic-fallback",
+            "source": "estimated-fallback",
             "live": False,
             "active_count": None,
             "severe_count": None,

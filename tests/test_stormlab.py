@@ -45,12 +45,12 @@ def test_lab_runs_everything_on_demand_only():
     assert script.count("pointerdown") == 2
 
 
-def test_lab_labels_advisory_illustrative_and_synthetic():
+def test_lab_labels_advisory_illustrative_and_estimates():
     html = _lab()
     lowered = html.lower()
     assert "advisory" in lowered
     assert "illustrative" in lowered
-    assert "synthetic" in lowered
+    assert "estimates" in lowered
     assert "sam" in lowered
 
 

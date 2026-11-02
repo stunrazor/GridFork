@@ -11,8 +11,8 @@ quantified reroutes on Cost, Time Saved, On-Time Probability, and Confidence.
 ## How it works
 
 - Deterministic core: the specialists and the ranking are pure Python, so
-  the numbers are always reproducible. The demo runs the engine over
-  synthetic scenario data; live snapshots run the same engine over
+  the numbers are always reproducible. The baseline runs the engine over
+  reference incident data; live snapshots run the same engine over
   measured conditions.
 - Ask GridFork: the `/ask?q=` box tops every view and answers worldwide routes only, grounded solely in places you name
   (typed, dictated, or picked in the lab), never a default location. Scenario
@@ -34,7 +34,7 @@ quantified reroutes on Cost, Time Saved, On-Time Probability, and Confidence.
 - Phase 1 real data: the `/live` snapshot feeds measured North Sea wave
   height (Open-Meteo Marine, keyless) and Rotterdam wind into the sea leg
   through an explicit documented rule; costs and probabilities stay
-  synthetic estimates, and every field carries a provenance label.
+  modeled estimates, and every field carries a provenance label.
 - Phase 2 real data: the same snapshot adds air (OpenSky Network traffic,
   else keyless adsb.lol direct or via an `ADSB_BASE_URL` relay), road
   (TomTom flow ratios plus incident closures and a routed truck transit),
@@ -45,7 +45,7 @@ quantified reroutes on Cost, Time Saved, On-Time Probability, and Confidence.
 - Worldwide snapshots: `GET /snapshot` ranks all four modes live for any
   corridor — six presets from the North Sea to the transpacific, or any
   two geocoded places. Same delay rules, agents, and scoring as the
-  demo; legs that cannot apply (open-ocean road/rail) are excluded with
+  baseline; legs that cannot apply (open-ocean road/rail) are excluded with
   a reason instead of a silent guess. The Storm Lab runs these on click,
   and its Ask box grounds in the selected corridor.
 
@@ -88,7 +88,7 @@ endpoint still works on deterministic fallbacks. Tests run offline:
 
 ## Honest scope notes
 
-- Scenario data is synthetic and labeled as such throughout.
+- Costs, probabilities, and confidences are modeled estimates, labeled per field; legs are measured live where providers reach.
 - Phase 2 keys (all free): OpenSky needs `OPENSKY_CLIENT_ID` plus
   `OPENSKY_CLIENT_SECRET` from an OAuth2 client at opensky-network.org
   (else keyless adsb.lol answers, optionally via an `ADSB_BASE_URL`

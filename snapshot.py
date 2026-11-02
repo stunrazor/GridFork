@@ -164,13 +164,13 @@ def build_snapshot(
         "confidence": _confidence(delay_prov),
     }
     provenance["sea"] = {
-        "wave_height_m": "measured" if marine["live"] else "synthetic-fallback",
-        "wind_kph": "measured" if wind["live"] else "synthetic-fallback",
+        "wave_height_m": "measured" if marine["live"] else "estimated-fallback",
+        "wind_kph": "measured" if wind["live"] else "estimated-fallback",
         "delay_hours": delay_prov,
         "port_status": delay_prov,
-        "cost_usd": "synthetic-estimate",
-        "on_time_probability": "synthetic-estimate",
-        "confidence": "synthetic-estimate",
+        "cost_usd": "estimated",
+        "on_time_probability": "estimated",
+        "confidence": "estimated",
     }
     if sea_short:
         legs["sea"] = _not_applicable("sea", SHORT_SEA_REASON)
@@ -240,9 +240,9 @@ def build_snapshot(
         "airborne_origin": "measured" if air["live"] else "unavailable",
         "airborne_dest": "measured" if air["live"] else "unavailable",
         "delay_hours": delay_prov,
-        "cost_usd": "synthetic-estimate",
-        "on_time_probability": "synthetic-estimate",
-        "confidence": "synthetic-estimate",
+        "cost_usd": "estimated",
+        "on_time_probability": "estimated",
+        "confidence": "estimated",
     }
     if air_short:
         legs["air"] = _not_applicable("air", SHORT_AIR_REASON)
@@ -309,9 +309,9 @@ def build_snapshot(
                 "measured" if road["live"] else "unavailable"
             ),
             "delay_hours": delay_prov,
-            "cost_usd": "synthetic-estimate",
-            "on_time_probability": "synthetic-estimate",
-            "confidence": "synthetic-estimate",
+            "cost_usd": "estimated",
+            "on_time_probability": "estimated",
+            "confidence": "estimated",
         }
 
     # Rail: departures at the corridor stop, keyless via Entur.
@@ -372,9 +372,9 @@ def build_snapshot(
         provenance["rail"] = {
             "active_disruptions": "measured" if rail["live"] else "unavailable",
             "delay_hours": delay_prov,
-            "cost_usd": "synthetic-estimate",
-            "on_time_probability": "synthetic-estimate",
-            "confidence": "synthetic-estimate",
+            "cost_usd": "estimated",
+            "on_time_probability": "estimated",
+            "confidence": "estimated",
         }
 
     # Inapplicable legs still need slices for the shared agents; their

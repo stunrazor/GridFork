@@ -43,7 +43,7 @@ def fetch_waves_at(latitude: float, longitude: float, timeout: float = 10.0) -> 
         }
     except Exception:
         return {
-            "source": "synthetic-fallback",
+            "source": "estimated-fallback",
             "live": False,
             "wave_height_m": FALLBACK_WAVE_HEIGHT_M,
             "observed_at": None,

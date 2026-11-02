@@ -71,7 +71,7 @@ and an optional illustration. Print-friendly.</p>
 
 <footer>
 <p>Ask GridFork tops every view. All live inference runs on demand only &mdash;
-nothing calls a model on page load. Costs and probabilities stay synthetic estimates; legs measured live.</p>
+nothing calls a model on page load. Costs and probabilities stay estimates; legs measured live.</p>
 </footer>
 </body>
 </html>

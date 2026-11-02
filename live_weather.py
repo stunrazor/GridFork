@@ -44,7 +44,7 @@ def fetch_wind_at(latitude: float, longitude: float, timeout: float = 10.0) -> d
         }
     except Exception:
         return {
-            "source": "synthetic-fallback",
+            "source": "estimated-fallback",
             "live": False,
             "wind_kph": FALLBACK_WIND_KPH,
             "observed_at": None,

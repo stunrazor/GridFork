@@ -29,9 +29,9 @@ def test_landing_links_all_four_views():
     assert "Incident brief" in html
 
 
-def test_landing_labels_synthetic_and_on_demand():
+def test_landing_labels_estimates_and_on_demand():
     lowered = render_landing().lower()
-    assert "synthetic" in lowered
+    assert "estimates" in lowered
     assert "on demand" in lowered or "on-demand" in lowered
 
 

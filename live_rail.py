@@ -42,7 +42,7 @@ DB_STATION_EVA = "8002549"  # Hamburg Hbf
 DB_DELAY_MINUTES = 10
 NS_SETUP_DETAIL = (
     "Free NS key needed: set NS_API_KEY from https://apiportal.ns.nl. "
-    "The rail leg stays synthetic until then."
+    "The rail leg stays estimated until then."
 )
 DB_SETUP_DETAIL = (
     "Free DB Timetables credentials needed: set DB_CLIENT_ID and "
@@ -86,7 +86,7 @@ def fetch_network_disruptions(timeout: float = 10.0) -> dict:
         }
     except Exception:
         return {
-            "source": "synthetic-fallback",
+            "source": "estimated-fallback",
             "live": False,
             "active_count": None,
             "rotterdam_count": None,
@@ -153,7 +153,7 @@ def fetch_db_disruptions(timeout: float = 10.0) -> dict:
         }
     except Exception:
         return {
-            "source": "synthetic-fallback",
+            "source": "estimated-fallback",
             "live": False,
             "active_count": None,
             "severe_count": None,
@@ -205,7 +205,7 @@ def fetch_entur_disruptions(
         }
     except Exception:
         return {
-            "source": "synthetic-fallback",
+            "source": "estimated-fallback",
             "live": False,
             "active_count": None,
             "severe_count": None,

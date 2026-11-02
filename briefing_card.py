@@ -68,7 +68,7 @@ async function briefLoadLive() {
   try {
     briefAskSnapshot(await getJSON("/demo/north-sea-storm/live"));
     el.textContent = "Showing live measured values.";
-  } catch (e) { el.textContent = "Live fetch failed (" + e + "); showing storm scenario values."; }
+  } catch (e) { el.textContent = "Live fetch failed (" + e + "); showing baseline values."; }
 }
 function briefAskSnapshot(snap) {
   const el = document.getElementById("brief-live-note");
@@ -217,8 +217,7 @@ def render_brief_card(demo: dict) -> str:
         "illustration via <code>/demo/north-sea-storm/image</code> "
         "(<code>source: muse-image</code> live, "
         "<code>unavailable</code> offline) &middot; SAM 3.1 segmentation is "
-        "the vision/evidence step. Costs and probabilities are synthetic "
-        "estimates.</p>\n</footer>\n"
+        "the vision/evidence step. Costs and probabilities are estimates.</p>\n</footer>\n"
         + _SCRIPT
         + ask_box.render_ask_script("brief")
         + "</body>\n</html>\n"

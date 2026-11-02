@@ -38,7 +38,7 @@ def test_fetch_falls_back_labeled_on_error(monkeypatch):
 
     monkeypatch.setattr(live_weather.httpx, "get", error_get)
     result = live_weather.fetch_rotterdam_wind()
-    assert result["source"] == "synthetic-fallback"
+    assert result["source"] == "estimated-fallback"
     assert result["live"] is False
 
 

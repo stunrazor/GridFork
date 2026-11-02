@@ -18,7 +18,7 @@ def test_grid_live_button_rerenders_tables():
 
 def test_grid_loads_live_on_open():
     html = render_grid_page()
-    assert "Switch live/storm tables" in html
+    assert "Switch live/baseline tables" in html
     script = html.split("<script>", 1)[1]
     assert 'renderDemo(await getJSON("/demo/north-sea-storm/live"))' in script
     assert "let liveOn = true;" in script
@@ -39,7 +39,9 @@ def test_routes_live_values_button_updates_hero_kpis_table():
     assert script.count("/demo/north-sea-storm/live") == 1
     for target in ("rt-hero-title", "rt-kpi-score", "rt-comp-body"):
         assert target in script
-    assert "Schematic stays storm-scenario" in script
+    assert 'id="rt-schem-sea-bar"' in html
+    assert 'id="rt-schem-sea-text"' in html
+    assert '"rt-schem-" + f.mode' in script
 
 
 def test_routes_loads_live_values_on_open():

@@ -32,7 +32,7 @@ OSL_BOX = {"lamin": 59.8, "lomin": 10.6, "lamax": 60.6, "lomax": 11.6}
 SETUP_DETAIL = (
     "Free OpenSky account needed: set OPENSKY_CLIENT_ID and "
     "OPENSKY_CLIENT_SECRET from an OAuth2 client at "
-    "https://opensky-network.org. The air leg stays synthetic until then."
+    "https://opensky-network.org. The air leg stays estimated until then."
 )
 
 
@@ -96,7 +96,7 @@ def fetch_corridor_traffic(
         }
     except Exception as exc:
         return {
-            "source": "synthetic-fallback",
+            "source": "estimated-fallback",
             "live": False,
             **blank,
             "observed_at": None,
@@ -172,7 +172,7 @@ def fetch_adsb_traffic(
         }
     except Exception as exc:
         return {
-            "source": "synthetic-fallback",
+            "source": "estimated-fallback",
             "live": False,
             **blank,
             "observed_at": None,

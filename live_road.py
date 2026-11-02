@@ -35,7 +35,7 @@ MAJOR_MAGNITUDES = (3, 4)
 SETUP_DETAIL = (
     "Free TomTom key needed: set TOMTOM_API_KEY from "
     "https://developer.tomtom.com (enable the Traffic and Routing "
-    "products). The road leg stays synthetic until then."
+    "products). The road leg stays estimated until then."
 )
 
 
@@ -185,7 +185,7 @@ def fetch_corridor_congestion(
         }
     except Exception:
         return {
-            "source": "synthetic-fallback",
+            "source": "estimated-fallback",
             "live": False,
             "worst_ratio": None,
             "points": [],

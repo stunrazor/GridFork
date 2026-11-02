@@ -47,9 +47,9 @@ def _live_context():
     return {
         "provenance": {
             "sea": {"delay_hours": "estimated-from-conditions"},
-            "air": {"delay_hours": "synthetic"},
+            "air": {"delay_hours": "scenario"},
             "road": {"delay_hours": "estimated-from-conditions"},
-            "rail": {"delay_hours": "synthetic"},
+            "rail": {"delay_hours": "scenario"},
         },
         "marine": {"source": "open-meteo", "live": True, "wave_height_m": 0.4},
         "wind": {"source": "open-meteo", "live": True, "wind_kph": 45.0},

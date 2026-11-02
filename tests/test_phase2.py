@@ -234,7 +234,7 @@ def test_adsb_falls_back_labeled_when_call_fails(monkeypatch):
 
     monkeypatch.setattr(httpx, "get", error_get)
     result = live_air.fetch_adsb_traffic()
-    assert result["source"] == "synthetic-fallback"
+    assert result["source"] == "estimated-fallback"
     assert result["live"] is False
     assert result["detail"] == "ConnectError"
 
@@ -315,7 +315,7 @@ def test_air_falls_back_labeled_when_call_fails(monkeypatch):
 
     monkeypatch.setattr(httpx, "post", error_post)
     result = live_air.fetch_corridor_traffic()
-    assert result["source"] == "synthetic-fallback"
+    assert result["source"] == "estimated-fallback"
     assert result["live"] is False
     assert result["detail"] == "ConnectError"
 
@@ -333,7 +333,7 @@ def test_air_fallback_detail_reports_http_status(monkeypatch):
     monkeypatch.setattr(httpx, "post", denied_post)
     monkeypatch.setattr(httpx, "get", denied_get)
     result = live_air.fetch_corridor_traffic()
-    assert result["source"] == "synthetic-fallback"
+    assert result["source"] == "estimated-fallback"
     assert result["detail"] == "HTTPStatusError 401"
 
 
@@ -476,7 +476,7 @@ def test_road_falls_back_labeled_when_call_fails(monkeypatch):
 
     monkeypatch.setattr(httpx, "get", error_get)
     result = live_road.fetch_corridor_congestion()
-    assert result["source"] == "synthetic-fallback"
+    assert result["source"] == "estimated-fallback"
     assert result["live"] is False
 
 
@@ -530,7 +530,7 @@ def test_rail_falls_back_labeled_when_call_fails(monkeypatch):
 
     monkeypatch.setattr(httpx, "get", error_get)
     result = live_rail.fetch_network_disruptions()
-    assert result["source"] == "synthetic-fallback"
+    assert result["source"] == "estimated-fallback"
     assert result["live"] is False
 
 
@@ -601,12 +601,12 @@ def test_snapshot_unconfigured_matches_baseline_plus_setup_states(monkeypatch):
     baseline = run_demo()
     assert body["findings"] == baseline["findings"]
     assert body["ranked_options"] == baseline["ranked_options"]
-    assert body["air"]["source"] == "synthetic-fallback"
+    assert body["air"]["source"] == "estimated-fallback"
     assert body["road"]["source"] == "setup-required"
-    assert body["rail"]["source"] == "synthetic-fallback"
-    assert body["provenance"]["air"]["delay_hours"] == "synthetic"
-    assert body["provenance"]["road"]["delay_hours"] == "synthetic"
-    assert body["provenance"]["rail"]["delay_hours"] == "synthetic"
+    assert body["rail"]["source"] == "estimated-fallback"
+    assert body["provenance"]["air"]["delay_hours"] == "scenario"
+    assert body["provenance"]["road"]["delay_hours"] == "scenario"
+    assert body["provenance"]["rail"]["delay_hours"] == "scenario"
 
 
 def test_snapshot_live_phase2_overrides_all_legs(monkeypatch):
@@ -624,7 +624,7 @@ def test_snapshot_live_phase2_overrides_all_legs(monkeypatch):
     assert body["provenance"]["road"]["delay_hours"] == "estimated-from-conditions"
     assert body["provenance"]["rail"]["active_disruptions"] == "measured"
     assert body["provenance"]["rail"]["delay_hours"] == "estimated-from-conditions"
-    assert body["provenance"]["air"]["cost_usd"] == "synthetic"
+    assert body["provenance"]["air"]["cost_usd"] == "scenario"
 
 
 def test_snapshot_zero_airborne_declines_estimate(monkeypatch):
@@ -634,7 +634,7 @@ def test_snapshot_zero_airborne_declines_estimate(monkeypatch):
     air = next(f for f in body["findings"] if f["mode"] == "air")
     assert air["delay_hours"] == 4  # synthetic stands; zero traffic is ambiguous
     assert body["provenance"]["air"]["airborne_ams"] == "measured"
-    assert body["provenance"]["air"]["delay_hours"] == "synthetic"
+    assert body["provenance"]["air"]["delay_hours"] == "scenario"
 
 
 def test_snapshot_thin_air_traffic_advises_delay(monkeypatch):
@@ -834,7 +834,7 @@ def test_db_falls_back_labeled_when_call_fails(monkeypatch):
 
     monkeypatch.setattr(httpx, "get", error_get)
     result = live_rail.fetch_db_disruptions()
-    assert result["source"] == "synthetic-fallback"
+    assert result["source"] == "estimated-fallback"
     assert result["live"] is False
 
 
@@ -920,7 +920,7 @@ def test_entur_falls_back_labeled_on_graphql_errors(monkeypatch):
 
     monkeypatch.setattr(httpx, "post", fake_post)
     result = live_rail.fetch_entur_disruptions()
-    assert result["source"] == "synthetic-fallback"
+    assert result["source"] == "estimated-fallback"
     assert result["live"] is False
 
 
@@ -962,7 +962,7 @@ def test_rail_reports_fallback_when_all_providers_fail(monkeypatch):
     monkeypatch.setattr(httpx, "get", error_http)
     monkeypatch.setattr(httpx, "post", error_http)
     result = live_rail.fetch_rail_disruptions()
-    assert result["source"] == "synthetic-fallback"
+    assert result["source"] == "estimated-fallback"
     assert result["live"] is False
     assert result["active_count"] is None
     assert result["severe_count"] is None

@@ -59,9 +59,9 @@ def render_grid_page() -> str:
 <body>
 <h1>GridFork live grid</h1>
 <p class="sub">Showing: <span id="grid-corridor">Loading…</span></p>
-<p class="sub">Multi-agent reroute engine: live traffic, weather &amp; disruption data across sea, air, road and rail. Legs measured live; costs stay synthetic estimates.
+<p class="sub">Multi-agent reroute engine: live traffic, weather &amp; disruption data across sea, air, road and rail. Legs measured live; costs stay estimates.
 Open the <a href="/demo/north-sea-storm/brief-card">shareable incident brief</a>,
-the <a href="/demo/storm-lab">Storm Scenario Lab</a>, the
+the <a href="/demo/storm-lab">scenario lab</a>, the
 <a href="/demo/routes">route briefing</a>, or <a href="/">home</a>.</p>
 
 """ + ask_box.render_ask_box("grid") + """<h2>Specialist findings</h2>
@@ -93,10 +93,10 @@ the deterministic engine recomputes the ranking. Runs on demand.</p>
 drive the sea leg through the same engine. Phase 2 air, road, and rail layers
 (OpenSky/adsb.lol traffic, TomTom congestion plus incidents and routed
 transit, rail disruptions via NS, DB, or keyless Entur) join the snapshot;
-keyed layers without keys stay synthetic and report setup-required.
-Costs and probabilities stay synthetic estimates; provenance is shown per
-field. Loads live on open; the button flips back to the storm scenario.</p>
-<button id="live-btn" type="button">Switch live/storm tables</button>
+keyed layers without keys stay estimated and report setup-required.
+Costs and probabilities stay estimates; provenance is shown per
+field. Loads live on open; the button flips back to the baseline.</p>
+<button id="live-btn" type="button">Switch live/baseline tables</button>
 <p id="live" class="note">Loading live values…</p>
 
 <h2>Meta Models (optional)</h2>
@@ -134,7 +134,7 @@ and tokens. Runs on demand; local inference can take minutes.</p>
 (<code>source: muse-spark</code> live, <code>deterministic</code> offline) &middot;
 SAM 3.1 segmentation (<code>source: sam-3.1</code> live,
 <code>unavailable</code> offline) &middot; Open-Meteo wind
-(<code>live: true</code>) or labeled synthetic fallback &middot; Muse Wonder
+(<code>live: true</code>) or a labeled fallback &middot; Muse Wonder
 brief (<code>muse-wonder</code> live, <code>deterministic</code> offline)
 &middot; Muse Image illustration (<code>muse-image</code> live,
 <code>unavailable</code> offline) &middot; open weights
@@ -171,7 +171,7 @@ function renderDemo(demo) {
 function gridAskSnapshot(snap) {
   renderDemo(snap);
   document.getElementById("live").textContent =
-    "Tables show the asked corridor (" + snap.label + "); use the button for storm/live views.";
+    "Tables show the asked corridor (" + snap.label + "); use the button for baseline/live views.";
 }
 async function loadDemo() {
   try {
@@ -182,7 +182,7 @@ async function loadDemo() {
   } catch (e) {
     renderDemo(await getJSON("/demo/north-sea-storm"));
     document.getElementById("live").textContent =
-      "Live fetch failed; showing storm scenario values.";
+      "Live fetch failed; showing baseline values.";
   }
 }
 async function loadSummary() {
@@ -204,12 +204,12 @@ async function loadWeather() {
 let liveOn = true;
 document.getElementById("live-btn").addEventListener("click", async () => {
   const el = document.getElementById("live");
-  el.textContent = liveOn ? "Reloading storm scenario\u2026" : "Fetching live snapshot\u2026";
+  el.textContent = liveOn ? "Reloading baseline\u2026" : "Fetching live snapshot\u2026";
   try {
     const snap = liveOn ? await getJSON("/demo/north-sea-storm")
       : await getJSON("/demo/north-sea-storm/live");
     renderDemo(snap);
-    if (liveOn) { el.textContent = "Tables show the storm scenario; click again for live values."; }
+    if (liveOn) { el.textContent = "Tables show the baseline; click again for live values."; }
     else {
     const top = snap.ranked_options[0];
     const sea = snap.findings.find(f => f.mode === "sea");
@@ -230,7 +230,7 @@ document.getElementById("live-btn").addEventListener("click", async () => {
       "; rail " + snap.rail.source +
       (snap.rail.live ? " " + snap.rail.active_count + " active" : "") +
       "; top pick now " + top.option_id + " at score " + top.score + "." +
-      " Tables now show live values; click again for the storm scenario.";
+      " Tables now show live values; click again for the baseline.";
     }
     liveOn = !liveOn;
   } catch (e) { el.textContent = String(e); }

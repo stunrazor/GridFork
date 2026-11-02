@@ -66,7 +66,7 @@ def test_marine_fetch_falls_back_labeled_on_error(monkeypatch):
 
     monkeypatch.setattr(live_marine.httpx, "get", error_get)
     result = live_marine.fetch_north_sea_waves()
-    assert result["source"] == "synthetic-fallback"
+    assert result["source"] == "estimated-fallback"
     assert result["live"] is False
     assert result["wave_height_m"] == 8.5
 
@@ -83,7 +83,7 @@ def test_live_calm_seas_make_sailing_top_pick(monkeypatch):
     assert body["provenance"]["sea"]["wave_height_m"] == "measured"
     assert body["provenance"]["sea"]["wind_kph"] == "measured"
     assert body["provenance"]["sea"]["delay_hours"] == "estimated-from-conditions"
-    assert body["provenance"]["sea"]["cost_usd"] == "synthetic-estimate"
+    assert body["provenance"]["sea"]["cost_usd"] == "estimated"
 
 
 def test_live_storm_matches_synthetic_scale(monkeypatch):
@@ -105,7 +105,7 @@ def test_snapshot_falls_back_to_baseline_offline(monkeypatch):
     baseline = run_demo()
     assert body["ranked_options"] == baseline["ranked_options"]
     assert body["findings"] == baseline["findings"]
-    assert body["provenance"]["sea"]["wave_height_m"] == "synthetic-fallback"
+    assert body["provenance"]["sea"]["wave_height_m"] == "estimated-fallback"
     assert body["marine"]["live"] is False
     assert body["wind"]["live"] is False
 
@@ -113,9 +113,9 @@ def test_snapshot_falls_back_to_baseline_offline(monkeypatch):
 def test_live_scenario_marks_other_modes_synthetic(monkeypatch):
     _route_live(monkeypatch, 0.4, 45.0)
     _, provenance, _, _ = build_live_scenario()
-    assert provenance["air"]["delay_hours"] == "synthetic"
-    assert provenance["road"]["delay_hours"] == "synthetic"
-    assert provenance["rail"]["delay_hours"] == "synthetic"
+    assert provenance["air"]["delay_hours"] == "scenario"
+    assert provenance["road"]["delay_hours"] == "scenario"
+    assert provenance["rail"]["delay_hours"] == "scenario"
 
 
 def test_live_endpoint_shape(monkeypatch):
@@ -129,7 +129,7 @@ def test_live_endpoint_shape(monkeypatch):
 def test_grid_page_has_live_snapshot_section():
     html = render_grid_page()
     assert "Live snapshot" in html
-    assert "Switch live/storm tables" in html
+    assert "Switch live/baseline tables" in html
     assert "measured" in html.lower()
     script = html.split("<script>", 1)[1]
     assert script.count("/demo/north-sea-storm/live") == 2
