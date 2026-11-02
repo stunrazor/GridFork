@@ -369,3 +369,20 @@ def test_ask_snippet_renders_text_only():
     assert "textContent" in snippet
     for word in ("dashboard", "command center", "control tower", "console"):
         assert word not in snippet.lower()
+
+
+def test_ask_box_has_mic_button():
+    from ask_box import render_ask_box, render_ask_script
+
+    snippet = render_ask_box("probe") + render_ask_script("probe")
+    assert "probe-ask-talk" in snippet
+    assert "probe-ask-voice" in snippet
+    assert "/demo/north-sea-storm/transcribe" in snippet
+    assert "innerHTML" not in snippet
+
+
+def test_all_views_render_ask_mic():
+    assert "grid-ask-talk" in render_grid_page()
+    assert "rt-ask-talk" in render_routes_page(run_demo())
+    assert "lab-ask-talk" in render_storm_lab()
+    assert "brief-ask-talk" in render_brief_card(run_demo())
