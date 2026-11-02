@@ -3,9 +3,8 @@
 Multi-agent reroute engine: live traffic, weather & disruption data across
 sea, air, road and rail, scored by cost, time saved and on-time odds.
 
-GridFork is a multi-agent cascade evaluation demo for multi-modal logistics
-(sea, air, road, rail), built for the Meta Global AI Developer Hackathon
-(Indie Track). A North Sea storm disrupts shipping into Rotterdam; four
+GridFork is a multi-agent cascade evaluation engine for multi-modal logistics
+(sea, air, road, rail). A North Sea storm disrupts shipping into Rotterdam; four
 specialist agents report per-mode findings, and an orchestrator ranks
 quantified reroutes on Cost, Time Saved, On-Time Probability, and Confidence.
 
