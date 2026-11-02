@@ -218,6 +218,58 @@ def test_geocode_empty_raises(monkeypatch):
         geo.geocode("Atlantis")
 
 
+def test_normalize_place_dedupes_segments():
+    assert (
+        geo.normalize_place("Malolos City, Philippines, Philippines")
+        == "Malolos City, Philippines"
+    )
+    assert geo.normalize_place("  Baliuag   City , Bulacan ") == (
+        "Baliuag City, Bulacan"
+    )
+
+
+def test_geocode_retries_simpler_variant(monkeypatch):
+    calls = []
+
+    def fake_get(url, params=None, headers=None, timeout=None):
+        calls.append(params["q"])
+        found = (
+            [{"lat": "14.95", "lon": "120.90", "display_name": "Baliuag"}]
+            if len(calls) > 1
+            else []
+        )
+        return httpx.Response(
+            200, json=found, request=httpx.Request("GET", url)
+        )
+
+    monkeypatch.setattr(httpx, "get", fake_get)
+    assert geo.geocode("Baliuag City, Bulacan, Philippines") == (
+        "Baliuag City, Bulacan, Philippines",
+        14.95,
+        120.90,
+    )
+    assert calls[0] == "Baliuag City, Bulacan, Philippines"
+    assert calls[1] == "Baliuag, Bulacan, Philippines"
+
+
+def test_geocode_retries_once_on_network_error(monkeypatch):
+    calls = []
+
+    def fake_get(url, params=None, headers=None, timeout=None):
+        calls.append(params["q"])
+        if len(calls) == 1:
+            raise httpx.ConnectError("flaky")
+        return httpx.Response(
+            200,
+            json=[{"lat": "53.55", "lon": "10.0", "display_name": "Hamburg"}],
+            request=httpx.Request("GET", url),
+        )
+
+    monkeypatch.setattr(httpx, "get", fake_get)
+    assert geo.geocode("Hamburg") == ("Hamburg", 53.55, 10.0)
+    assert calls == ["Hamburg", "Hamburg"]
+
+
 def test_nearest_stop_picks_closest(monkeypatch):
     def fake_post(url, json=None, headers=None, timeout=None):
         return httpx.Response(

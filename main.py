@@ -114,8 +114,10 @@ def north_sea_storm_ask(
             return guidance_response(asked)
         try:
             snap = snapshot_mod.snapshot_for_places(*places)
-        except (ValueError, httpx.HTTPError):
+        except ValueError:
             return guidance_response(asked, places=places)
+        except httpx.HTTPError:
+            return guidance_response(asked, places=places, unreachable=True)
         return run_ask(asked, snapshot=snap)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))

@@ -8,6 +8,7 @@ finds nothing.
 """
 
 import math
+import re
 
 import httpx
 
@@ -135,23 +136,73 @@ def opensky_box(lat: float, lon: float, half: float = 0.4) -> dict:
     }
 
 
+def normalize_place(name: str) -> str:
+    """Tidy a place span: collapse space, drop repeated segments.
+
+    Dictation and typed echoes ("Malolos City, Philippines, Philippines")
+    would otherwise fail lookup verbatim.
+    """
+    segments = []
+    for segment in (name or "").split(","):
+        cleaned = " ".join(segment.split())
+        if cleaned and cleaned.lower() not in [s.lower() for s in segments]:
+            segments.append(cleaned)
+    return ", ".join(segments)
+
+
+def _place_variants(name: str) -> list:
+    """Full name, then simpler country-anchored fallbacks.
+
+    Geocoders are finicky with verbose names ("Baliuag City, Bulacan,
+    Philippines"), so an empty result retries without "City", then as
+    first+last segments, then as the first two segments.
+    """
+    full = normalize_place(name)
+    stripped = normalize_place(
+        re.sub(r"\bcity\b", "", full, flags=re.IGNORECASE).replace("  ", " ")
+    )
+    segments = [s.strip() for s in full.split(",") if s.strip()]
+    candidates = [full, stripped]
+    if len(segments) >= 3:
+        candidates.append(f"{segments[0]}, {segments[-1]}")
+    if len(segments) >= 2:
+        candidates.append(", ".join(segments[:2]))
+    variants = []
+    for candidate in candidates:
+        if candidate and candidate not in variants:
+            variants.append(candidate)
+    return variants or [name]
+
+
 def geocode(name: str, timeout: float = 10.0) -> tuple:
     """Resolve a place name to (name, lat, lon) via Nominatim.
 
-    Raises ValueError when nothing matches; the first result wins.
+    Tries simpler variants after an empty result; raises ValueError when
+    none match (the original name labels the answer); network errors
+    retry once per variant, then propagate so the caller can report them
+    distinctly. First result wins.
     """
-    response = httpx.get(
-        NOMINATIM_URL,
-        params={"q": name, "format": "json", "limit": 1},
-        headers={"User-Agent": NOMINATIM_USER_AGENT},
-        timeout=timeout,
-    )
-    response.raise_for_status()
-    results = response.json()
-    if not results:
-        raise ValueError(f"place not found: {name!r}")
-    best = results[0]
-    return (name, float(best["lat"]), float(best["lon"]))
+    for variant in _place_variants(name):
+        try:
+            response = httpx.get(
+                NOMINATIM_URL,
+                params={"q": variant, "format": "json", "limit": 1},
+                headers={"User-Agent": NOMINATIM_USER_AGENT},
+                timeout=timeout,
+            )
+        except httpx.HTTPError:
+            response = httpx.get(
+                NOMINATIM_URL,
+                params={"q": variant, "format": "json", "limit": 1},
+                headers={"User-Agent": NOMINATIM_USER_AGENT},
+                timeout=timeout,
+            )
+        response.raise_for_status()
+        results = response.json()
+        if results:
+            best = results[0]
+            return (name, float(best["lat"]), float(best["lon"]))
+    raise ValueError(f"place not found: {name!r}")
 
 
 def nearest_entur_stop(lat: float, lon: float, timeout: float = 10.0):

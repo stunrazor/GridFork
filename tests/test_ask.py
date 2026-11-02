@@ -495,7 +495,9 @@ def test_endpoint_guides_when_geocode_unreachable(monkeypatch):
     assert body["grounded_on"] is None
     assert body["fastest_alternative"] is None
     assert body["answer"]["source"] == "guidance"
+    assert body["reason"] == "geocode unreachable"
     assert "Baliuag" in body["answer"]["text"]
+    assert "unreachable" in body["answer"]["text"]
 
 
 def test_endpoint_guides_when_no_places_named():

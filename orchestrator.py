@@ -425,14 +425,23 @@ GUIDANCE_NO_PLACES = (
 )
 
 
-def guidance_response(asked: str, places: tuple | None = None) -> dict:
+def guidance_response(
+    asked: str, places: tuple | None = None, unreachable: bool = False
+) -> dict:
     """Deterministic Ask-shaped reply when no grounding applies.
 
-    Free (no model call): either the question names no places, or the
-    named places could not be resolved. ``fastest_alternative`` is None
-    because there is no corridor to time.
+    Free (no model call): either the question names no places, the named
+    places could not be resolved, or the place search itself was
+    unreachable. ``fastest_alternative`` is None because there is no
+    corridor to time.
     """
-    if places:
+    if places and unreachable:
+        text = (
+            f"Couldn't look up {places[0]!r} or {places[1]!r}: the place "
+            "search was unreachable — try again in a moment."
+        )
+        reason = "geocode unreachable"
+    elif places:
         text = (
             f"I couldn't find {places[0]!r} or {places[1]!r}. Check the "
             "spelling, or phrase it 'from X to Y'."
