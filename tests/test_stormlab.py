@@ -19,39 +19,48 @@ def test_lab_is_deterministic():
     assert _lab() == _lab()
 
 
-def test_lab_has_typed_input_run_button_and_push_to_talk():
+def test_lab_centers_on_corridor_picker():
     html = _lab()
     assert "<h1>GridFork scenario lab</h1>" in html
-    assert "lab-input" in html
-    assert "Run scenario" in html
-    assert "lab-talk" in html
-    assert "Hold to talk" in html
-    assert "Insert mock question" in html
+    assert "Worldwide snapshot" in html
+    assert "lab-corridor" in html
+    assert "lab-snapshot-btn" in html
+    assert "Run live snapshot" in html
+    assert "lab-ask-input" in html
+    for gone in (
+        "lab-input",
+        "Run scenario",
+        "lab-talk",
+        "Insert mock question",
+        "lab-challenge",
+        "lab-illustration",
+    ):
+        assert gone not in html
 
 
-def test_lab_runs_everything_on_demand_only():
+def test_lab_runs_snapshot_and_ask_only():
     html = _lab()
     script = html.split("<script>", 1)[1]
-    for path in (
+    assert script.count("/snapshot?corridor=") == 1
+    assert script.count("/snapshot?from=") == 1
+    for gone in (
         "/demo/north-sea-storm/whatif?q=",
         "/demo/north-sea-storm/challenge?models=",
         "/demo/north-sea-storm/image",
     ):
-        assert script.count(path) == 1
-    # Two mics, each touched only inside its own hold-to-talk handler:
-    # what-if dictation and Ask dictation.
-    assert script.count("/demo/north-sea-storm/transcribe") == 2
-    assert script.count("getUserMedia") == 2
-    assert script.count("pointerdown") == 2
+        assert gone not in script
+    # One mic left: Ask dictation, touched only in its hold-to-talk handler.
+    assert script.count("/demo/north-sea-storm/transcribe") == 1
+    assert script.count("getUserMedia") == 1
+    assert script.count("pointerdown") == 1
 
 
-def test_lab_labels_advisory_illustrative_and_estimates():
+def test_lab_labels_estimates_and_picker():
     html = _lab()
     lowered = html.lower()
-    assert "advisory" in lowered
-    assert "illustrative" in lowered
     assert "estimates" in lowered
-    assert "sam" in lowered
+    assert "corridor" in lowered
+    assert "provenance" in lowered
 
 
 def test_lab_avoids_banned_framing_words():
@@ -63,7 +72,7 @@ def test_lab_avoids_banned_framing_words():
 def test_lab_endpoint_returns_lab_html():
     html = north_sea_storm_lab()
     assert "<h1>GridFork scenario lab</h1>" in html
-    assert "Run scenario" in html
+    assert "Run live snapshot" in html
 
 
 def test_grid_page_links_to_storm_lab():

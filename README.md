@@ -57,7 +57,7 @@ quantified reroutes on Cost, Time Saved, On-Time Probability, and Confidence.
 
 - `GET /` — landing page with buttons to every view
 - `GET /health`
-- `GET /demo/grid` — observable grid page (findings, ranking, vision, wind)
+- `GET /demo/grid` — observable grid page (findings, ranking, wind, runner checks)
 - `GET /demo/north-sea-storm` — findings plus ranked options (JSON)
 - `GET /demo/north-sea-storm/summary` — plus Spark narrative rationale (`?corridor=` / `?from=&to=` for an asked corridor)
 - `GET /demo/north-sea-storm/vision` — plus SAM ground truth (`?image_url=`, `?corridor=` / `?from=&to=`)
@@ -70,8 +70,8 @@ quantified reroutes on Cost, Time Saved, On-Time Probability, and Confidence.
 - `GET /demo/north-sea-storm/openweights?model=` — Spark Open / Glimmer runner setup status (`spark-open`, `glimmer`)
 - `GET /demo/north-sea-storm/whatif?q=` — Wonder assumptions plus before/after ranking for a what-if question (`?corridor=` / `?from=&to=`)
 - `GET /demo/north-sea-storm/challenge?models=` — open-weight route challenge: both models critique three fixed cases, scored on agreement, schema validity, latency, and tokens (`?corridor=` / `?from=&to=`, `&mock=true` for canned critiques)
-- `GET /demo/north-sea-storm/brief-card` — shareable incident brief page (deterministic text, on-demand Muse Image illustration, print-friendly)
-- `GET /demo/storm-lab` — Scenario lab: worldwide snapshot runner (presets or custom places, Ask grounded in the corridor), typed or push-to-talk what-if input, open-weight comparison (live or mock), on-demand illustration
+- `GET /demo/north-sea-storm/brief-card` — shareable incident brief page (deterministic text, print-friendly; scenario tools live in the route briefing)
+- `GET /demo/storm-lab` — Scenario lab: worldwide snapshot runner (presets or custom places, Ask grounded in the corridor); scenario tools live in the route briefing
 - `POST /demo/north-sea-storm/transcribe` — Muse Voice Transcribe for one base64 WAV clip (`{"audio_b64", "filename"}`)
 - `GET /demo/routes` — route briefing: hero recommendation, KPI strip, comparison plus SVG schematic, side brief, and Evidence / What-if / Bench / Visual stages
 
@@ -107,7 +107,7 @@ endpoint still works on deterministic fallbacks. Tests run offline:
   stay in the environment, never in the repo.
 - Vision uses reference imagery, not a live Rotterdam feed.
 - The optional Meta Models grid section needs `META_MODEL_API_KEY` for
-  Wonder/Image (paid calls, run on demand only) and a runner for open
+  the Wonder explanation (paid, on demand only) and a runner for open
   weights. Glimmer: install Ollama, run `ollama run muse-glimmer`
   (~17 GB download), set `GLIMMER_BASE_URL=http://localhost:11434/v1`.
   Spark Open needs a hosted provider: set `SPARK_OPEN_BASE_URL` to its
@@ -128,7 +128,7 @@ endpoint still works on deterministic fallbacks. Tests run offline:
   (`https://api.together.xyz/v1`, `meta-models/Muse-Glimmer-30B`,
   $0.35/$1.50 per 1M) or local Ollama. A full 6-call challenge costs
   a few cents.
-- Scenario lab prerequisites: no single partner is confirmed for
+- Open-model and voice prerequisites: no single partner is confirmed for
   both open models, so live comparison legs report `setup-required` /
   `unreachable` until runners are configured; `?mock=true` previews the
   panel with fixed canned critiques (labeled `mock`, no network).

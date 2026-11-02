@@ -1,10 +1,8 @@
 """Shareable incident briefing card: one page summarizing the demo scenario.
 
-Fully deterministic from ``run_demo()`` output; rendering the page never
-triggers image generation. The illustration loads on demand from the
-existing ``/demo/north-sea-storm/image`` endpoint and is always labeled
-illustrative, never evidence — SAM segmentation remains the
-vision/evidence step.
+Fully deterministic from ``run_demo()`` output; the live values refresh
+on open and on click. Scenario tools (what-if, evidence, bench,
+illustration) live in the route briefing.
 """
 
 import ask_box
@@ -35,20 +33,17 @@ _CSS = """
   button:active { background: #274067; }
   input { font-size: 0.9rem; padding: 0.35rem 0.5rem; width: 65%;
           background: #0b1526; color: #f4f7fb; border: 1px solid #2a3a55; }
-  img.illus { max-width: 100%; border: 1px solid #2a3a55; margin-top: 0.5rem; }
   .note { font-size: 0.85rem; color: #c3cede; }
   .ask-out { background: #131f33; border: 1px solid #2a3a55;
              padding: 0.6rem 0.8rem; margin-top: 0.5rem; min-height: 2.5rem;
              font-size: 0.9rem; }
-  .label { font-size: 0.85rem; color: #c3cede; border-left: 3px solid #7dd3fc;
-           padding-left: 0.6rem; }
   footer { margin-top: 2rem; font-size: 0.8rem; color: #c3cede;
            border-top: 1px solid #2a3a55; padding-top: 0.5rem; }
   code { background: #1b2942; padding: 0 0.25rem; }
   @media print {
     button, input { display: none; }
     body { background: #fff; color: #000; }
-    .sub, .note, .label, footer { color: #333; }
+    .sub, .note, footer { color: #333; }
     th { background: #eee; color: #000; }
     th, td { border-color: #999; }
     .rec, .ask-out { background: #fff; border-color: #000; }
@@ -121,24 +116,6 @@ function briefAskSnapshot(snap) {
 }
 document.getElementById("brief-live-btn").addEventListener("click", briefLoadLive);
 briefLoadLive();
-document.getElementById("illus-btn").addEventListener("click", async () => {
-  const el = document.getElementById("illustration");
-  el.textContent = "Generating illustration\\u2026";
-  try {
-    const demo = await getJSON("/demo/north-sea-storm/image");
-    const img = demo.image;
-    if (img.data_url) {
-      el.textContent = "[" + img.source + "] " + img.note + " ";
-      const tag = document.createElement("img");
-      tag.src = img.data_url;
-      tag.alt = "AI-generated port illustration";
-      tag.className = "illus";
-      el.appendChild(tag);
-    } else {
-      el.textContent = "[" + img.source + "] " + img.note;
-    }
-  } catch (e) { el.textContent = String(e); }
-});
 </script>
 """
 
@@ -205,19 +182,10 @@ def render_brief_card(demo: dict) -> str:
         '<tbody id="brief-ranking-body">\n'
         + ranking_rows
         + "</tbody>\n</table>\n"
-        "<h2>Illustration</h2>\n"
-        '<p class="label">AI-generated illustration (Muse Image) &mdash; '
-        "illustrative only. Not a real port image, map, or evidence. "
-        "Vision evidence comes from SAM 3.1 segmentation of reference "
-        "imagery.</p>\n"
-        '<button id="illus-btn" type="button">Generate illustration</button>\n'
-        '<div id="illustration" class="note">Not generated yet. Paid Muse Image '
-        "call; runs on demand only.</div>\n"
         "<footer>\n<p>Sources: deterministic scoring (always) &middot; "
-        "illustration via <code>/demo/north-sea-storm/image</code> "
-        "(<code>source: muse-image</code> live, "
-        "<code>unavailable</code> offline) &middot; SAM 3.1 segmentation is "
-        "the vision/evidence step. Costs and probabilities are estimates.</p>\n</footer>\n"
+        "live measured legs with provenance &middot; Ask GridFork "
+        "(Spark/Wonder routing, paid, click only). Costs and probabilities "
+        "are estimates. Scenario tools live in the route briefing.</p>\n</footer>\n"
         + _SCRIPT
         + ask_box.render_ask_script("brief")
         + "</body>\n</html>\n"

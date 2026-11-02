@@ -10,30 +10,31 @@ def test_page_calls_the_json_endpoints():
     for path in (
         "/demo/north-sea-storm",
         "/demo/north-sea-storm/summary",
-        "/demo/north-sea-storm/vision",
         "/demo/north-sea-storm/weather",
         "/demo/north-sea-storm/brief",
-        "/demo/north-sea-storm/image",
         "/demo/north-sea-storm/openweights",
         "/demo/north-sea-storm/openweights/ask",
     ):
         assert path in html
 
 
-def test_page_has_ranking_and_vision_beats():
+def test_page_has_ranking_without_stage_tools():
     html = render_grid_page()
     assert "Ranked reroutes" in html
-    assert "Run SAM verification" in html
-    assert "muse-spark" in html
-    assert "sam-3.1" in html
+    for gone in (
+        "What-if planner",
+        "Run SAM verification",
+        "Generate port image",
+        "Route challenge",
+    ):
+        assert gone not in html
+    assert "route briefing" in html.lower()
 
 
 def test_page_has_optional_meta_models_section():
     html = render_grid_page()
     assert "Meta Models (optional)" in html
     assert "Explain this scenario" in html
-    assert "Generate port image" in html
-    assert "Separate from SAM" in html
     assert "Check Spark Open runner" in html
     assert "Check Glimmer runner" in html
     assert "Classify with Spark Open" in html
@@ -46,7 +47,6 @@ def test_meta_models_section_makes_no_onload_calls():
     script = html.split("<script>", 1)[1]
     for path in (
         "/demo/north-sea-storm/brief",
-        "/demo/north-sea-storm/image",
         "/demo/north-sea-storm/openweights?model=",
         "/demo/north-sea-storm/openweights/ask?model=",
     ):

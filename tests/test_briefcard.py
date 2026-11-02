@@ -32,22 +32,22 @@ def test_card_shows_impacts_ranking_and_corridor_label():
     assert "Rotterdam → Oslo — storm baseline" in html
 
 
-def test_card_labels_illustration_as_illustrative_not_evidence():
-    html = _card()
+def test_illustration_lives_only_in_routes():
+    from routes_page import render_routes_page
+
+    assert "Generate illustration" not in _card()
+    assert "/demo/north-sea-storm/image" not in _card()
+    html = render_routes_page(run_demo())
     assert "Generate illustration" in html
-    assert "AI-generated illustration" in html
-    lowered = html.lower()
-    assert "illustrative only" in lowered
-    assert "not a real port image" in lowered
-    assert "sam" in lowered
+    assert "illustrative only" in html.lower()
 
 
-def test_card_generates_illustration_on_demand_only():
+def test_card_has_no_illustration_section():
     html = _card()
-    assert "/demo/north-sea-storm/image" in html
-    script = html.split("<script>", 1)[1]
-    assert script.count("/demo/north-sea-storm/image") == 1
-    assert "addEventListener" in script
+    assert "AI-generated illustration" not in html
+    assert "illus-btn" not in html
+    assert "Ranking" in html
+    assert "Impacts" in html
 
 
 def test_card_loads_live_values_on_open():
@@ -80,7 +80,7 @@ def test_endpoint_returns_card_html():
     html = north_sea_storm_brief_card()
     assert "incident brief" in html.lower()
     assert "rail-reroute" in html
-    assert "Generate illustration" in html
+    assert "Recommendation" in html
 
 
 def test_grid_page_links_to_brief_card():

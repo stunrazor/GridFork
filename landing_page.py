@@ -45,26 +45,26 @@ saved and on-time odds.
 <div class="cards">
 <div class="card">
 <h2>Route briefing <span class="badge">NEWEST</span></h2>
-<p>Top pick with KPIs, full route comparison, and a data-drawn schematic.
-One click refreshes every number from live conditions.</p>
+<p>Top pick with KPIs, full route comparison, and the scenario stages:
+evidence, what-if, bench, and visual. Live from the asked corridor.</p>
 <a class="btn" href="/demo/routes">Open route briefing</a>
 </div>
 <div class="card">
 <h2>Live grid</h2>
-<p>Specialist findings and ranked reroutes with Spark narrative and SAM
-visual check. One click re-renders from the live snapshot.</p>
+<p>Specialist findings, ranked reroutes, live layer readout, and runner
+checks. The monitoring seat; scenario tools live in the briefing.</p>
 <a class="btn" href="/demo/grid">Open live grid</a>
 </div>
 <div class="card">
 <h2>Scenario lab</h2>
-<p>Worldwide snapshot runner for any corridor, what-if planner with voice
-input, open-weight comparison, and on-demand illustration.</p>
+<p>Worldwide snapshot runner for any corridor, with Ask grounded in the
+corridor you pick. Scenario tools live in the briefing.</p>
 <a class="btn" href="/demo/storm-lab">Open scenario lab</a>
 </div>
 <div class="card">
 <h2>Incident brief</h2>
-<p>Shareable one-page brief: recommendation, impacts, ranked reroutes,
-and an optional illustration. Print-friendly.</p>
+<p>Shareable one-page brief: recommendation, impacts, ranked reroutes.
+Deterministic and print-friendly.</p>
 <a class="btn" href="/demo/north-sea-storm/brief-card">Open incident brief</a>
 </div>
 </div>

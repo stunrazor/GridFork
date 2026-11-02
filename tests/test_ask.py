@@ -356,7 +356,7 @@ def test_ask_box_sits_above_mode_content():
     routes = render_routes_page(run_demo())
     assert routes.index("rt-ask-input") < routes.index("Route comparison")
     lab = render_storm_lab()
-    assert lab.index("lab-ask-input") < lab.index("1. Scenario question")
+    assert lab.index("lab-ask-input") < lab.index("Worldwide snapshot")
     card = render_brief_card(run_demo())
     assert card.index("brief-ask-input") < card.index("<h2>Impacts</h2>")
 

@@ -244,11 +244,12 @@ def test_endpoint_function_rejects_blank_with_400():
     assert exc_info.value.status_code == 400
 
 
-def test_grid_page_has_whatif_planner():
-    html = render_grid_page()
-    assert "What-if planner" in html
-    assert "whatif-input" in html
-    assert "Run what-if" in html
+def test_whatif_planner_lives_only_in_routes():
+    from routes_page import render_routes_page
+
+    assert "What-if planner" not in render_grid_page()
+    html = render_routes_page(run_demo())
+    assert "What-if" in html
+    assert "rt-input" in html
+    assert "Run scenario" in html
     assert "/demo/north-sea-storm/whatif?q=" in html
-    script = html.split("<script>", 1)[1]
-    assert script.count("/demo/north-sea-storm/whatif?q=") == 1

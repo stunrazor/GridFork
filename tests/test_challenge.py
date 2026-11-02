@@ -261,11 +261,12 @@ def test_challenge_endpoint_rejects_unknown_model_with_400():
     assert exc_info.value.status_code == 400
 
 
-def test_grid_page_has_route_challenge():
-    html = render_grid_page()
-    assert "Route challenge" in html
-    assert "Run route challenge" in html
-    assert "Advisory only" in html
+def test_route_challenge_lives_only_in_routes():
+    from routes_page import render_routes_page
+
+    assert "Route challenge" not in render_grid_page()
+    html = render_routes_page(run_demo())
+    assert "Model Bench" in html
+    assert "Run live comparison" in html
+    assert "Preview with mock data" in html
     assert "/demo/north-sea-storm/challenge?models=" in html
-    script = html.split("<script>", 1)[1]
-    assert script.count("/demo/north-sea-storm/challenge?models=") == 1
