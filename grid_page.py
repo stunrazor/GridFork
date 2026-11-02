@@ -58,7 +58,6 @@ def render_grid_page() -> str:
 </head>
 <body>
 <h1>GridFork live grid</h1>
-<p class="sub">Showing: <span id="grid-corridor">Loading…</span></p>
 <p class="sub">Multi-agent reroute engine: live traffic, weather &amp; disruption data across sea, air, road and rail. Legs measured live; costs stay estimates.
 Open the <a href="/demo/north-sea-storm/brief-card">shareable incident brief</a>,
 the <a href="/demo/storm-lab">scenario lab</a>, the
@@ -129,7 +128,6 @@ function pill(status) {
   return '<span class="pill ' + status + '">' + status + '</span>';
 }
 function renderDemo(demo) {
-  document.getElementById("grid-corridor").textContent = demo.label;
   document.getElementById("modes").innerHTML = demo.findings.map(f =>
     '<div class="mode"><h3>' + f.mode + ' ' + pill(f.status) + '</h3>' +
     '<div>delay +' + f.delay_hours + 'h &middot; on-time ' +

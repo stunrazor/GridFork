@@ -67,7 +67,6 @@ async function briefLoadLive() {
 }
 function briefAskSnapshot(snap) {
   const el = document.getElementById("brief-live-note");
-  document.getElementById("brief-corridor").textContent = snap.label;
   const top = snap.ranked_options[0];
   const run = snap.ranked_options[1];
   document.getElementById("brief-rec-title").textContent =
@@ -161,8 +160,7 @@ def render_brief_card(demo: dict) -> str:
         + ask_box.render_ask_box("brief")
         + "<h2>Recommendation</h2>\n"
         '<p><button id="brief-live-btn" type="button">Refresh live values</button>\n'
-        '<span id="brief-live-note" class="note">Loading live values…</span>\n'
-        f'Showing: <span id="brief-corridor">{demo["label"]}</span></p>\n'
+        '<span id="brief-live-note" class="note">Loading live values…</span></p>\n'
         '<div class="rec">\n'
         f'<p id="brief-rec-title"><strong>{top["option_id"]}</strong> &mdash; {top["title"]}</p>\n'
         f'<p id="brief-rec-nums">Score {top["score"]} &middot; ${top["cost_usd"]} '

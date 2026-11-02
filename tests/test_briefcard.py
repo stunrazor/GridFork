@@ -24,12 +24,12 @@ def test_card_leads_with_recommendation_and_tradeoff():
     assert "saves 4h more" in html
 
 
-def test_card_shows_impacts_ranking_and_corridor_label():
+def test_card_shows_impacts_and_ranking():
     html = _card()
     assert "sea" in html and "disrupted" in html
     assert "air-lift" in html
     assert "sea-wait" in html
-    assert "Rotterdam → Oslo — storm baseline" in html
+    assert "Showing:" not in html
 
 
 def test_illustration_lives_only_in_routes():

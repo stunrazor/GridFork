@@ -550,7 +550,7 @@ def test_ask_box_shows_grounding():
     assert "any two places" in render_ask_box("probe")
 
 
-def test_headers_show_live_corridor():
+def test_headers_carry_no_corridor_line():
     routes = render_routes_page(run_demo())
     assert "<h1>GridFork route briefing</h1>" in routes
     assert "function rtSetPill(snap)" in routes
@@ -558,11 +558,13 @@ def test_headers_show_live_corridor():
     assert "route briefing &mdash; Rotterdam" not in routes
     grid = render_grid_page()
     assert "<h1>GridFork live grid</h1>" in grid
-    assert 'id="grid-corridor"' in grid
+    assert "Showing:" not in grid
+    assert 'id="grid-corridor"' not in grid
     assert "live grid &mdash; North Sea" not in grid
     brief = render_brief_card(run_demo())
     assert "<h1>GridFork incident brief</h1>" in brief
-    assert 'id="brief-corridor"' in brief
+    assert "Showing:" not in brief
+    assert 'id="brief-corridor"' not in brief
     assert "incident brief &mdash; North Sea" not in brief
     assert "<h1>GridFork scenario lab</h1>" in render_storm_lab()
 
