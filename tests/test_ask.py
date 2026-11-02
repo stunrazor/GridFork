@@ -551,8 +551,8 @@ def test_ask_box_shows_grounding():
 def test_headers_show_live_corridor():
     routes = render_routes_page(run_demo())
     assert "<h1>GridFork route briefing</h1>" in routes
-    assert 'id="rt-corridor"' in routes
-    assert "function rtSetCorridor(snap)" in routes
+    assert "function rtSetPill(snap)" in routes
+    assert "Showing:" not in routes
     assert "route briefing &mdash; Rotterdam" not in routes
     grid = render_grid_page()
     assert "<h1>GridFork live grid</h1>" in grid

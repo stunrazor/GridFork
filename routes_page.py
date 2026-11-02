@@ -279,8 +279,7 @@ async function rtChallenge(mock) {
     el.appendChild(table);
   } catch (e) { el.textContent = String(e); }
 }
-function rtSetCorridor(snap) {
-  document.getElementById("rt-corridor").textContent = snap.label;
+function rtSetPill(snap) {
   const sea = snap.findings.find(f => f.mode === "sea");
   const pill = document.getElementById("rt-alert-pill");
   pill.className = "pill " + sea.status;
@@ -293,13 +292,13 @@ async function rtLoadLiveValues() {
   try {
     const snap = await getJSON("/demo/north-sea-storm/live");
     rtAskSnapshot(snap);
-    rtSetCorridor(snap);
+    rtSetPill(snap);
     el.textContent = "Showing live measured values.";
   } catch (e) { el.textContent = "Live fetch failed (" + e + "); showing baseline values."; }
 }
 function rtAskSnapshot(snap) {
   const el = document.getElementById("rt-live-values-note");
-  rtSetCorridor(snap);
+  rtSetPill(snap);
   const top = snap.ranked_options[0];
   const run = snap.ranked_options[1];
   document.getElementById("rt-hero-title").textContent =
@@ -439,7 +438,6 @@ def render_routes_page(demo: dict) -> str:
         '<span class="badge live">LIVE DATA &middot; LABELED ESTIMATES</span> '
         '<span class="badge">DETERMINISTIC SCORING</span> '
         '<a href="/">Home</a></p>\n'
-        f'<p class="sub">Showing: <span id="rt-corridor">{demo["label"]}</span></p>\n'
         "</header>\n"
         + ask_box.render_ask_box("rt")
         + '<div class="kpi-strip">\n'
