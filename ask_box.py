@@ -12,18 +12,34 @@ ASK_PATH = "/demo/north-sea-storm/ask"
 TRANSCRIBE_PATH = "/demo/north-sea-storm/transcribe"
 
 
-def render_ask_box(prefix: str, heading: str = "Ask GridFork") -> str:
+ASK_DEFAULT_LEAD = (
+    "Ask for the fastest route between any two places, anywhere "
+    "in the world &mdash; live traffic, disruptions, costs, and ranking."
+)
+ASK_DEFAULT_EXAMPLE = "Which option is cheapest and what does it trade off?"
+ASK_TRAILER = (
+    "Scenario and why-questions go to Muse Wonder, facts to Muse Spark; each "
+    "answered question is a paid call and runs on click only."
+)
+
+
+def render_ask_box(
+    prefix: str,
+    heading: str = "Ask GridFork",
+    lead: str | None = None,
+    example: str | None = None,
+) -> str:
     """Render the ask section with ids namespaced under ``prefix``.
 
-    Markup only; :func:`render_ask_script` renders the companion script,
-    which pages append after their main script block.
+    ``lead``/``example`` tailor the box to the hosting view's service;
+    defaults keep the generic worldwide wording. Markup only;
+    :func:`render_ask_script` renders the companion script, which pages
+    append after their main script block.
     """
     return f"""<h2>{heading}</h2>
-<p class="note">Ask for the fastest route between any two places, anywhere
-in the world &mdash; live traffic, disruptions, costs, and ranking.
-Scenario and why-questions go to Muse Wonder, facts to Muse Spark; each
-answered question is a paid call and runs on click only.</p>
-<input id="{prefix}-ask-input" maxlength="500" value="Which option is cheapest and what does it trade off?">
+<p class="note">{lead or ASK_DEFAULT_LEAD}
+{ASK_TRAILER}</p>
+<input id="{prefix}-ask-input" maxlength="500" value="{example or ASK_DEFAULT_EXAMPLE}">
 <button id="{prefix}-ask-btn" type="button">Ask</button>
 <button id="{prefix}-ask-talk" type="button">Hold to talk</button>
 <span id="{prefix}-ask-voice" class="note"></span>

@@ -547,7 +547,7 @@ def render_routes_page(demo: dict) -> str:
         '<span class="badge">DETERMINISTIC SCORING</span> '
         '<a href="/">Home</a></p>\n'
         "</header>\n"
-        + ask_box.render_ask_box("rt")
+        + ask_box.render_ask_box("rt", lead="Ask what to choose: fastest versus best overall, why the recommendation wins, and what each alternative trades off.")
         + '<p id="rt-ask-context" class="note">Asking about: North Sea '
         "incident &mdash; or name any two places to ask worldwide.</p>\n"
         + '<div class="hero">\n'

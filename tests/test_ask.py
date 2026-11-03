@@ -220,6 +220,25 @@ def test_lab_page_has_ask_box():
 def test_brief_card_has_ask_box():
     _assert_ask_box(render_brief_card(run_demo()), "brief")
 
+def test_ask_descriptions_match_each_view_service():
+    from ask_box import render_ask_box
+
+    grid = render_grid_page()
+    routes = render_routes_page(run_demo())
+    lab = render_storm_lab()
+    brief = render_brief_card(run_demo())
+    assert "Ask what's happening now across sea, air, road, and rail" in grid
+    assert "Which mode is disrupted right now, and why?" in grid
+    assert "Ask what to choose: fastest versus best overall" in routes
+    assert "Ask what-if questions against the selected corridor" in lab
+    assert "What if the storm closes the port for 24 more hours?" in lab
+    assert "Ask for brief-ready answers" in brief
+    assert "Summarize the recommendation and its key trade-offs." in brief
+    # Shared trailer stays on every view.
+    for html in (grid, routes, lab, brief):
+        assert "paid call and runs on click only" in html
+    # Defaults keep the generic wording for any other host.
+    assert "anywhere in the world" in render_ask_box("x")
 
 def _mocked_models(monkeypatch, spark_text="Spark says.", wonder_text="Wonder says."):
     """Route mocked chat completions by model id; returns captured prompts."""

@@ -181,7 +181,7 @@ def render_brief_card(demo: dict) -> str:
         '<p class="sub">Multi-agent reroute engine across sea, air, road and rail. '
         '<a href="/">Home</a>.</p>\n'
         '<p class="note">Shareable page: print to PDF to distribute.</p>\n'
-        + ask_box.render_ask_box("brief")
+        + ask_box.render_ask_box("brief", lead="Ask for brief-ready answers: the recommendation, its impacts, the alternatives, and the evidence behind them.", example="Summarize the recommendation and its key trade-offs.")
         + '<p id="brief-ask-context" class="note">Asking about: North Sea '
         "incident &mdash; or name any two places to ask worldwide.</p>\n"
         + "<h2>Recommendation</h2>\n"

@@ -66,7 +66,7 @@ _PAGE = """<!DOCTYPE html>
 scenario questions live in the <a href="/demo/routes">route briefing</a>. <a href="/">Home</a> &middot;
 <a href="/demo/grid">Back to the grid</a>.</p>
 
-""" + ask_box.render_ask_box("lab") + """<p id="lab-ask-context" class="note">Asking about: Rotterdam → Oslo (selected corridor).</p>
+""" + ask_box.render_ask_box("lab", lead="Ask what-if questions against the selected corridor: change one disruption or assumption, then compare the before-and-after ranking.", example="What if the storm closes the port for 24 more hours?") + """<p id="lab-ask-context" class="note">Asking about: Rotterdam → Oslo (selected corridor).</p>
 <h2>Worldwide snapshot</h2>
 <p class="note">Live four-mode ranking for any corridor: pick a preset or
 type two places. Runs the selected corridor on open and on click; Ask
