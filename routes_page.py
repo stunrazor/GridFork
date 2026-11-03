@@ -341,6 +341,25 @@ function rtSetPill(snap) {
   pill.textContent = sea.status === "available" ? "SEA OPEN"
     : (sea.status === "degraded" ? "SEA ADVISORY" : "SEA DISRUPTED");
 }
+async function rtLoadSeaTraffic() {
+  const el = document.getElementById("rt-sea-traffic");
+  try {
+    const vessels = await getJSON("/vessels");
+    const labels = {hormuz: "Strait of Hormuz",
+      dover: "English Channel", suez: "Suez Canal"};
+    if (vessels.live) {
+      const gaps = vessels.coverage_gaps || [];
+      el.textContent = "Sea traffic: " + ["hormuz", "dover", "suez"].map(tag =>
+        labels[tag] + " " + vessels["vessels_" + tag] + " tracked" +
+        (gaps.indexOf(tag) >= 0 ? " (no AIS receiver coverage here)" : "")).join(" \u00b7 ") +
+        " [" + vessels.source + ", " + vessels.window_seconds + "s sample].";
+    } else if (vessels.source === "setup-required") {
+      el.textContent = "Sea traffic: unavailable (AIS key not configured).";
+    } else {
+      el.textContent = "Sea traffic: unavailable [" + vessels.source + "].";
+    }
+  } catch (e) { el.textContent = "Sea traffic: unreachable."; }
+}
 async function rtLoadLiveValues() {
   const el = document.getElementById("rt-live-values-note");
   el.textContent = "Fetching live snapshot\u2026";
@@ -348,6 +367,7 @@ async function rtLoadLiveValues() {
     const snap = await getJSON("/demo/north-sea-storm/live");
     rtAskSnapshot(snap);
     rtSetPill(snap);
+    rtLoadSeaTraffic();
     el.textContent = "Showing live measured values.";
   } catch (e) { el.textContent = "Live fetch failed (" + e + "); showing baseline values."; }
 }
@@ -557,6 +577,7 @@ def render_routes_page(demo: dict) -> str:
         "</div>\n"
         '<p><button id="rt-live-values-btn" type="button">Refresh live values</button>\n'
         '<span id="rt-live-values-note" class="note">Loading live values…</span></p>\n'
+        '<p class="note" id="rt-sea-traffic">Loading sea traffic…</p>\n'
         '<div class="main-grid">\n'
         '<div class="panel">\n<h2>Route comparison</h2>\n'
         '<div class="opt-cards" id="rt-comp-list">\n'

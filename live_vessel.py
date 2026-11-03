@@ -16,14 +16,15 @@ import threading
 import time
 from datetime import datetime, timezone
 
-import websocket
-from websocket import create_connection
+from websockets.sync.client import connect as _ws_connect
 
 STREAM_URL = "wss://stream.aisstream.io/v0/stream"
-# Default watch boxes: the world's busiest cargo/tanker chokepoints.
-HORMUZ_BOX = {"lamin": 25.8, "lomin": 55.8, "lamax": 27.0, "lomax": 56.8}
-DOVER_BOX = {"lamin": 50.8, "lomin": 0.9, "lamax": 51.3, "lomax": 1.9}
-SUEZ_BOX = {"lamin": 29.8, "lomin": 32.2, "lamax": 31.6, "lomax": 32.7}
+# Default watch boxes: the world's busiest cargo/tanker chokepoints,
+# widened to ~2 degrees. AISStream's community receivers are sparse, so
+# a tight box samples almost nothing even in a busy strait.
+HORMUZ_BOX = {"lamin": 25.4, "lomin": 55.3, "lamax": 27.4, "lomax": 57.3}
+DOVER_BOX = {"lamin": 50.0, "lomin": 0.4, "lamax": 52.0, "lomax": 2.4}
+SUEZ_BOX = {"lamin": 29.7, "lomin": 31.4, "lamax": 31.7, "lomax": 33.5}
 DEFAULT_BOXES = (
     ("hormuz", HORMUZ_BOX),
     ("dover", DOVER_BOX),
@@ -48,6 +49,15 @@ def clear_vessel_cache() -> None:
     """Drop cached vessel readouts (tests and key rotation)."""
     with _VESSEL_CACHE_LOCK:
         _VESSEL_CACHE.clear()
+
+
+def _connect(url: str, timeout: float):
+    """Open a compressed stream connection (wrapper for tests).
+
+    Compression is required, not optional: AISStream bandwidth-limits
+    uncompressed connections and drops most of their messages.
+    """
+    return _ws_connect(url, open_timeout=timeout, compression="deflate")
 
 
 def point_box(lat: float, lon: float, half: float = 0.5) -> dict:
@@ -76,7 +86,7 @@ def _in_box(lat: float, lon: float, box: dict) -> bool:
     )
 
 
-def _parse_report(raw: str):
+def _parse_report(raw):
     """Extract (mmsi, lat, lon, stamp) from a stream envelope.
 
     Returns None for anything malformed or not a position report; the
@@ -93,11 +103,12 @@ def _parse_report(raw: str):
     meta = envelope.get("MetaData") or {}
     message = envelope.get("Message") or {}
     report = message.get("PositionReport") or {}
-    # Per the AISStream docs the normalized position lives in MetaData;
-    # fall back to the message body if a frame lacks it.
+    # Position placement varies: the docs show capitalized MetaData,
+    # live frames carry the full body plus lowercase MetaData. Accept
+    # capitalized MetaData, then the body, then lowercase MetaData.
     try:
-        lat = float(meta.get("Latitude", report.get("Latitude")))
-        lon = float(meta.get("Longitude", report.get("Longitude")))
+        lat = float(meta.get("Latitude", report.get("Latitude", meta.get("latitude"))))
+        lon = float(meta.get("Longitude", report.get("Longitude", meta.get("longitude"))))
     except (TypeError, ValueError):
         return None
     mmsi = meta.get("MMSI")
@@ -110,7 +121,7 @@ def _failure_detail(exc: Exception) -> str:
     """One-line failure class for a fallback readout; secret-free."""
     status = getattr(getattr(exc, "response", None), "status_code", None)
     if status is None:
-        # websocket-client failures carry the handshake status directly.
+        # Some handshake failures carry the status directly.
         status = getattr(exc, "status_code", None)
     if status is not None:
         return f"{type(exc).__name__} {status}"
@@ -152,45 +163,45 @@ def fetch_vessel_traffic(
     window = max(0.5, min(duration, timeout))
     seen: dict = {tag: set() for tag, _ in boxes}
     stamp = None
-    ws = None
     start = time.monotonic()
     try:
-        ws = create_connection(STREAM_URL, timeout=timeout)
-        ws.send(
-            json.dumps(
-                {
-                    "APIKey": api_key,
-                    "BoundingBoxes": _to_stream_boxes(boxes),
-                    "FilterMessageTypes": ["PositionReport"],
-                }
+        with _connect(STREAM_URL, timeout) as ws:
+            ws.send(
+                json.dumps(
+                    {
+                        "APIKey": api_key,
+                        "BoundingBoxes": _to_stream_boxes(boxes),
+                        "FilterMessageTypes": ["PositionReport"],
+                    }
+                )
             )
-        )
-        while time.monotonic() - start < window:
-            ws.settimeout(max(0.1, window - (time.monotonic() - start)))
-            try:
-                raw = ws.recv()
-            except websocket.WebSocketTimeoutException:
-                break
-            parsed = _parse_report(raw)
-            if parsed is None:
-                continue
-            mmsi, lat, lon, reported = parsed
-            for tag, box in boxes:
-                if _in_box(lat, lon, box):
-                    seen[tag].add(mmsi)
+            while time.monotonic() - start < window:
+                try:
+                    raw = ws.recv(
+                        timeout=max(0.1, window - (time.monotonic() - start))
+                    )
+                except TimeoutError:
                     break
-            if reported:
-                stamp = reported
-        counts = {f"vessels_{tag}": len(seen[tag]) for tag, _ in boxes}
-        readout = {
-            "source": "aisstream",
-            "live": True,
-            **counts,
-            "vessels_total": sum(counts.values()),
-            "window_seconds": round(time.monotonic() - start, 1),
-            "observed_at": stamp
-            or datetime.now(tz=timezone.utc).isoformat(),
-        }
+                parsed = _parse_report(raw)
+                if parsed is None:
+                    continue
+                mmsi, lat, lon, reported = parsed
+                for tag, box in boxes:
+                    if _in_box(lat, lon, box):
+                        seen[tag].add(mmsi)
+                        break
+                if reported:
+                    stamp = reported
+            counts = {f"vessels_{tag}": len(seen[tag]) for tag, _ in boxes}
+            readout = {
+                "source": "aisstream",
+                "live": True,
+                **counts,
+                "vessels_total": sum(counts.values()),
+                "window_seconds": round(time.monotonic() - start, 1),
+                "observed_at": stamp
+                or datetime.now(tz=timezone.utc).isoformat(),
+            }
         with _VESSEL_CACHE_LOCK:
             _VESSEL_CACHE[cache_key] = (
                 time.monotonic() + _VESSEL_CACHE_TTL,
@@ -206,9 +217,3 @@ def fetch_vessel_traffic(
             "observed_at": None,
             "detail": _failure_detail(exc),
         }
-    finally:
-        if ws is not None:
-            try:
-                ws.close()
-            except Exception:
-                pass

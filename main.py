@@ -181,8 +181,21 @@ def world_snapshot(
 
 @app.get("/vessels")
 def vessel_traffic():
-    """Live tracked-vessel counts at the three watched chokepoints."""
-    return live_vessel.fetch_vessel_traffic()
+    """Live tracked-vessel counts at the three watched chokepoints.
+
+    A 15 s sample: the community feed is sparse, so short windows read
+    near-zero even in busy straits. Boxes reading zero where receivers
+    are documented absent (Hormuz, Suez) are listed under
+    ``coverage_gaps``; the flag clears itself if vessels appear.
+    """
+    readout = live_vessel.fetch_vessel_traffic(duration=15.0)
+    if readout.get("live"):
+        readout["coverage_gaps"] = [
+            tag
+            for tag in ("hormuz", "suez")
+            if readout.get(f"vessels_{tag}") == 0
+        ]
+    return readout
 
 
 def _stage_snapshot(corridor: str, from_place: str, to: str):

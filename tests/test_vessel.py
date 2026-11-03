@@ -6,9 +6,10 @@ no key means no network call, and any stream failure stays labeled.
 """
 
 import json
+from types import SimpleNamespace
 
 import pytest
-import websocket
+from websockets.exceptions import InvalidStatus
 
 import geo
 import live_air
@@ -74,13 +75,17 @@ class _FakeWS:
     def send(self, payload):
         self.sent.append(payload)
 
-    def settimeout(self, seconds):
-        pass
-
-    def recv(self):
+    def recv(self, timeout=None):
         if self.frames:
             return self.frames.pop(0)
-        raise websocket.WebSocketTimeoutException("window over")
+        raise TimeoutError("window over")
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        self.close()
+        return False
 
     def close(self):
         self.closed = True
@@ -165,7 +170,7 @@ def test_vessel_setup_required_without_key(monkeypatch):
     def explode(*args, **kwargs):
         raise AssertionError("setup-required must not touch the network")
 
-    monkeypatch.setattr(live_vessel, "create_connection", explode)
+    monkeypatch.setattr(live_vessel, "_connect", explode)
     readout = live_vessel.fetch_vessel_traffic()
     assert readout["source"] == "setup-required"
     assert readout["live"] is False
@@ -186,7 +191,7 @@ def test_vessel_counts_unique_mmsi_per_box(monkeypatch):
             _report(444, 0.0, 0.0),  # outside every box: ignored
         ]
     )
-    monkeypatch.setattr(live_vessel, "create_connection", lambda *a, **k: fake)
+    monkeypatch.setattr(live_vessel, "_connect", lambda *a, **k: fake)
     readout = live_vessel.fetch_vessel_traffic(
         boxes=(HORMUZ, SUEZ), duration=5.0
     )
@@ -213,17 +218,39 @@ def test_vessel_skips_malformed_frames(monkeypatch):
             _report(555, 26.5, 56.2),
         ]
     )
-    monkeypatch.setattr(live_vessel, "create_connection", lambda *a, **k: fake)
+    monkeypatch.setattr(live_vessel, "_connect", lambda *a, **k: fake)
     readout = live_vessel.fetch_vessel_traffic(boxes=(HORMUZ,))
     assert readout["live"] is True
     assert readout["vessels_hormuz"] == 1
     assert readout["vessels_total"] == 1
 
 
+def test_vessel_reads_lowercase_metadata_position(monkeypatch):
+    monkeypatch.setenv("AISSTREAM_API_KEY", "unit-ais-key")
+    frame = json.dumps(
+        {
+            "MessageType": "PositionReport",
+            "Message": {"PositionReport": {"MessageID": 3}},
+            "MetaData": {
+                "MMSI": 999,
+                "latitude": 26.5,
+                "longitude": 56.2,
+                "time_utc": STAMP,
+            },
+        }
+    )
+    fake = _FakeWS([frame])
+    monkeypatch.setattr(live_vessel, "_connect", lambda *a, **k: fake)
+    readout = live_vessel.fetch_vessel_traffic(boxes=(HORMUZ,))
+    assert readout["live"] is True
+    assert readout["vessels_hormuz"] == 1
+    assert readout["observed_at"] == STAMP
+
+
 def test_vessel_falls_back_to_message_body_position(monkeypatch):
     monkeypatch.setenv("AISSTREAM_API_KEY", "unit-ais-key")
     fake = _FakeWS([_body_report(777, 26.5, 56.2)])
-    monkeypatch.setattr(live_vessel, "create_connection", lambda *a, **k: fake)
+    monkeypatch.setattr(live_vessel, "_connect", lambda *a, **k: fake)
     readout = live_vessel.fetch_vessel_traffic(boxes=(HORMUZ,))
     assert readout["live"] is True
     assert readout["vessels_hormuz"] == 1
@@ -233,12 +260,12 @@ def test_vessel_handshake_status_stays_in_detail(monkeypatch):
     monkeypatch.setenv("AISSTREAM_API_KEY", "unit-ais-key")
 
     def refused(*args, **kwargs):
-        raise websocket.WebSocketBadStatusException("handshake %s", 401)
+        raise InvalidStatus(SimpleNamespace(status_code=401))
 
-    monkeypatch.setattr(live_vessel, "create_connection", refused)
+    monkeypatch.setattr(live_vessel, "_connect", refused)
     readout = live_vessel.fetch_vessel_traffic(boxes=(HORMUZ,))
     assert readout["source"] == "estimated-fallback"
-    assert readout["detail"] == "WebSocketBadStatusException 401"
+    assert readout["detail"] == "InvalidStatus 401"
 
 
 def test_vessel_failure_falls_back_labeled(monkeypatch):
@@ -247,7 +274,7 @@ def test_vessel_failure_falls_back_labeled(monkeypatch):
     def down(*args, **kwargs):
         raise ConnectionError("stream unreachable")
 
-    monkeypatch.setattr(live_vessel, "create_connection", down)
+    monkeypatch.setattr(live_vessel, "_connect", down)
     readout = live_vessel.fetch_vessel_traffic(boxes=(HORMUZ,))
     assert readout["source"] == "estimated-fallback"
     assert readout["live"] is False
@@ -356,10 +383,42 @@ def test_vessels_endpoint_returns_readout(monkeypatch):
         "vessels_total": 50,
         "observed_at": STAMP,
     }
+    seen = {}
+
+    def fake(**kwargs):
+        seen.update(kwargs)
+        return readout
+
+    monkeypatch.setattr(live_vessel, "fetch_vessel_traffic", fake)
+    body = vessel_traffic()
+    assert seen.get("duration") == 15.0
+    assert body["coverage_gaps"] == []
+    assert body["vessels_total"] == 50
+
+
+def test_vessels_endpoint_flags_zero_coverage_gaps(monkeypatch):
+    readout = {
+        "source": "aisstream",
+        "live": True,
+        "vessels_hormuz": 0,
+        "vessels_dover": 2,
+        "vessels_suez": 0,
+        "vessels_total": 2,
+        "observed_at": STAMP,
+    }
     monkeypatch.setattr(
         live_vessel, "fetch_vessel_traffic", lambda **kwargs: readout
     )
-    assert vessel_traffic() == readout
+    body = vessel_traffic()
+    assert body["coverage_gaps"] == ["hormuz", "suez"]
+
+
+def test_vessels_endpoint_skips_gaps_when_not_live(monkeypatch):
+    readout = {"source": "setup-required", "live": False}
+    monkeypatch.setattr(
+        live_vessel, "fetch_vessel_traffic", lambda **kwargs: readout
+    )
+    assert "coverage_gaps" not in vessel_traffic()
 
 
 def test_vessel_reuses_readout_within_ttl(monkeypatch):
@@ -370,7 +429,7 @@ def test_vessel_reuses_readout_within_ttl(monkeypatch):
         calls.append(1)
         return _FakeWS([_report(111, 26.5, 56.2)])
 
-    monkeypatch.setattr(live_vessel, "create_connection", connect)
+    monkeypatch.setattr(live_vessel, "_connect", connect)
     first = live_vessel.fetch_vessel_traffic(boxes=(HORMUZ,))
     second = live_vessel.fetch_vessel_traffic(boxes=(HORMUZ,))
     assert first == second
@@ -387,7 +446,7 @@ def test_vessel_failure_is_not_cached(monkeypatch):
             raise ConnectionError("throttled")
         return _FakeWS([_report(111, 26.5, 56.2)])
 
-    monkeypatch.setattr(live_vessel, "create_connection", flaky)
+    monkeypatch.setattr(live_vessel, "_connect", flaky)
     failed = live_vessel.fetch_vessel_traffic(boxes=(HORMUZ,))
     recovered = live_vessel.fetch_vessel_traffic(boxes=(HORMUZ,))
     assert failed["live"] is False
@@ -404,4 +463,6 @@ def test_homepage_labels_each_watched_sea():
     assert "(North Sea)" in html
     assert "Sea traffic" in html
     script = html.split("<script>", 1)[1]
+    assert "no AIS receiver coverage here" in script
+    assert "s sample" in script
     assert "innerHTML" not in script

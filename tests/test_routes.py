@@ -124,3 +124,18 @@ def test_hero_handles_single_relevant_mode():
     script = _page().split("<script>", 1)[1]
     assert "only one relevant mode" in script
     assert "nothing to trade off" in script
+
+
+def test_briefing_shows_chokepoint_sea_traffic():
+    html = _page()
+    assert 'id="rt-sea-traffic"' in html
+    assert html.index("rt-live-values-note") < html.index("rt-sea-traffic")
+    assert html.index("rt-sea-traffic") < html.index("Route comparison")
+    script = html.split("<script>", 1)[1]
+    assert '"/vessels"' in script
+    assert "rtLoadSeaTraffic" in script
+    for label in ("Strait of Hormuz", "English Channel", "Suez Canal"):
+        assert label in script
+    assert "no AIS receiver coverage here" in script
+    assert "s sample" in script
+    assert "innerHTML" not in script

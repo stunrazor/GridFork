@@ -124,10 +124,12 @@ async function loadAttention() {
         const labels = {hormuz: "Strait of Hormuz",
           dover: "English Channel", suez: "Suez Canal"};
         if (vessels.live) {
+          const gaps = vessels.coverage_gaps || [];
           ["hormuz", "dover", "suez"].forEach(tag => {
             lines.push("Sea traffic, " + labels[tag] + ": " +
-              vessels["vessels_" + tag] + " vessels tracked [" +
-              vessels.source + "].");
+              vessels["vessels_" + tag] + " vessels tracked" +
+              (gaps.indexOf(tag) >= 0 ? " (no AIS receiver coverage here)" : "") +
+              " [" + vessels.source + ", " + vessels.window_seconds + "s sample].");
           });
         } else if (vessels.source === "setup-required") {
           lines.push("Sea traffic: vessel counts unavailable " +
