@@ -75,13 +75,15 @@ def _parse_report(raw: str):
         return None
     if envelope.get("MessageType") != "PositionReport":
         return None
+    meta = envelope.get("MetaData") or {}
     message = envelope.get("Message") or {}
     report = message.get("PositionReport") or {}
-    meta = envelope.get("MetaData") or {}
+    # Per the AISStream docs the normalized position lives in MetaData;
+    # fall back to the message body if a frame lacks it.
     try:
-        lat = float(report["Latitude"])
-        lon = float(report["Longitude"])
-    except (KeyError, TypeError, ValueError):
+        lat = float(meta.get("Latitude", report.get("Latitude")))
+        lon = float(meta.get("Longitude", report.get("Longitude")))
+    except (TypeError, ValueError):
         return None
     mmsi = meta.get("MMSI")
     if mmsi is None:

@@ -28,11 +28,29 @@ SUEZ = ("suez", {"lamin": 29.8, "lomin": 32.2, "lamax": 31.6, "lomax": 32.7})
 
 
 def _report(mmsi, lat, lon, stamp=STAMP):
+    # Real AISStream shape: normalized position in MetaData.
+    return json.dumps(
+        {
+            "MessageType": "PositionReport",
+            "Message": {"PositionReport": {"MessageID": 1, "UserID": mmsi}},
+            "MetaData": {
+                "MMSI": mmsi,
+                "ShipName": "EXAMPLE VESSEL",
+                "Latitude": lat,
+                "Longitude": lon,
+                "time_utc": stamp,
+            },
+        }
+    )
+
+
+def _body_report(mmsi, lat, lon):
+    # Older/alternate shape: position only in the message body.
     return json.dumps(
         {
             "MessageType": "PositionReport",
             "Message": {"PositionReport": {"Latitude": lat, "Longitude": lon}},
-            "MetaData": {"MMSI": mmsi, "time_utc": stamp},
+            "MetaData": {"MMSI": mmsi},
         }
     )
 
@@ -192,6 +210,15 @@ def test_vessel_skips_malformed_frames(monkeypatch):
     assert readout["live"] is True
     assert readout["vessels_hormuz"] == 1
     assert readout["vessels_total"] == 1
+
+
+def test_vessel_falls_back_to_message_body_position(monkeypatch):
+    monkeypatch.setenv("AISSTREAM_API_KEY", "unit-ais-key")
+    fake = _FakeWS([_body_report(777, 26.5, 56.2)])
+    monkeypatch.setattr(live_vessel, "create_connection", lambda *a, **k: fake)
+    readout = live_vessel.fetch_vessel_traffic(boxes=(HORMUZ,))
+    assert readout["live"] is True
+    assert readout["vessels_hormuz"] == 1
 
 
 def test_vessel_handshake_status_stays_in_detail(monkeypatch):
