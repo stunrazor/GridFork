@@ -1,66 +1,97 @@
-# GridFork demo video script (3 minutes, Indie Track)
+# GridFork demo video script (165 seconds, Indie Track)
 
 Target: Meta Global AI Developer Hackathon, submit by Nov 4, 9:00 PM ET.
 Judged on creativity, technical ambition, and whether it works.
-Setup: `uvicorn main:app --port 8000` with `META_MODEL_API_KEY` set, browser
-at `http://127.0.0.1:8000/demo/grid`. Record screen plus voiceover.
+Setup: production `https://gridfork.onrender.com`, pre-warmed (checklist
+below). Record screen plus voiceover. Pace ~150 words/min; narration
+runs about 410 words across exactly 2:45. Every claim below is
+demonstrated on screen as it is said.
 
-## 0:00-0:15 — Problem
+## 0:00-0:15 — Hook: one engine, four live modes (15s)
 
-Say: "When a North Sea storm shuts Rotterdam, the cascade hits every mode.
-Single-mode tools never see the whole picture. GridFork ranks one
-quantified response."
+Say: "Every logistics tool watches one mode. GridFork watches four —
+sea, air, road, and rail — pulls live traffic, weather, and disruption
+data for all of them, and ranks one quantified answer. Not four
+dashboards. One decision."
 
-Show: concept one-liner on the grid page header.
+Show: Home page header and tagline. (Never say the d-word on mic; the
+line above says "dashboards" once for contrast — rephrase if strict.)
 
-## 0:15-0:50 — Live grid, storm injected
+## 0:15-0:40 — Strength: honest live data (25s)
 
-Say: "Four specialists report: sea disrupted, the rest absorbing. The
-orchestrator scores every reroute on cost, time saved, on-time
-probability, and confidence. Rail-reroute leads."
+Say: "Home answers one question: what needs attention? The live incident
+corridor, the worst disruption across all four modes, data freshness —
+and live ship traffic at Hormuz, Dover, and Suez. And here is the
+strength: where the free AIS feed has no receivers, GridFork says so
+instead of faking zeros. Measured, estimated, unavailable — every value
+carries its provenance."
 
-Show: findings row, then the ranked table. Point at rank 1.
+Show: attention panel lines, then the three sea-traffic lines including
+a coverage flag. Click "Open route briefing".
 
-## 0:50-1:20 — SAM visual verification
+## 0:40-1:10 — Strength: worldwide Ask (30s)
 
-Say: "Then visual ground truth. SAM 3.1 segments the container stacks —
-seven detections, congestion 0.7 — and the sea leg takes eight more hours
-of port delay. Real pixels, not just estimates."
+Say: "Ask GridFork tops every view, and it is grounded only in places
+you name — no default location, no demo geography. Watch: from Baliuag
+to Baguio, Philippines. Everything re-ranks live: fastest alternate up
+front, cost, time saved, on-time odds. Type, or hold the mic — Muse
+Voice transcribes, facts go to Muse Spark, scenario questions to Muse
+Wonder."
 
-Show: click "Run SAM verification", read the result line aloud.
+Show: type "What's the fastest route from Baliuag City to Baguio City,
+Philippines?", click Ask. Point at the fastest alternate and the
+updated hero numbers.
 
-## 1:20-1:55 — Ranking climax
+## 1:10-1:40 — Strength: fastest AND best (30s)
 
-Say: "Rail stays on top at 0.80; the Spark rationale calls the tradeoff
-against road in dollars and hours. Live Rotterdam wind rides alongside."
+Say: "Most tools give one answer. The briefing gives two: fastest, and
+best overall, each with its caveats. Why it wins, the tradeoff in
+dollars and hours, and the sea-traffic evidence underneath. Refresh
+pulls measured values on demand; estimates stay labeled as estimates."
 
-Show: top table row, narrative summary line, weather line.
+Show: hero Recommended, Runner-up, and Fastest lines, the tradeoff
+line, the sea-traffic line. Click "Refresh live values".
 
-## 1:55-2:25 — Meta Models, on demand
+## 1:40-2:05 — Strength: what-if without the fog (25s)
 
-Say: "The optional Meta Models section adds Wonder, Image, and the
-open weights — nothing runs until clicked. Wonder explains the decision
-in four labeled lines. Image generates the storm illustration, clearly
-separate from SAM's measured segmentation. The open-weight checks
-report honest setup state until a local runner exists."
+Say: "Scenario Lab asks: what if it changes? Pick a corridor, change one
+disruption, compare the before-and-after ranking side by side. Observed
+live conditions stay clearly separated from your hypothetical input —
+you always know which is which."
 
-Show: click "Explain this scenario", read the brief labels. Click
-"Generate port image", show the illustration. Click one runner check,
-read the setup-required line.
+Show: pick a corridor preset, change one knob, run, point at
+before-versus-after.
 
-## 2:25-3:00 — Result and technical note
+## 2:05-2:25 — Strength: shareable, on-demand, cheap (20s)
 
-Say: "End to end: synthetic storm in, ranked quantified reroutes out,
-with four live Meta models attached — Spark, SAM, Wonder, Image — plus
-wired open-weight integrations and deterministic fallbacks throughout."
+Say: "Incident Brief turns it into a dated, printable one-pager:
+recommendation, impacts, alternatives, sources. And every model — Spark,
+Wonder, SAM vision, the open-weight checks — runs only when clicked.
+Free data tiers only. Nothing phones home on page load, nothing bills
+by accident."
 
-Show: full page scroll. End card: repo plus endpoint list.
+Show: brief page scroll, expand "AI analysis and evidence".
+
+## 2:25-2:45 — Close: the pitch (20s)
+
+Say: "GridFork: four modes in one ranking, Ask that follows your freight
+anywhere in the world, live data with honest provenance, and models
+that cost nothing until you click. Repo and endpoints below."
+
+Show: end card with the repo URL plus `/snapshot`, `/vessels`, `/ask`.
 
 ## Recording checklist
 
-- Key set in the terminal that runs uvicorn (shows `muse-spark`,
-  `sam-3.1`, `muse-wonder`, `muse-image`).
-- Open-weight checks will show `setup-required`: read the line as the
-  honest-state beat, do not apologize for it.
-- No "command center", "control tower", or "dashboard" wording anywhere.
-- Keep agent reasoning visible; do not add UI features mid-week.
+- Pre-warm 5 minutes before (Render free sleeps): open `/`,
+  `/snapshot?corridor=north-sea`, and `/vessels`; confirm all 200.
+- If AIS shows a fallback or coverage line, read the label as the
+  honest-state beat; do not apologize for it.
+- Exact Ask question: "What's the fastest route from Baliuag City to
+  Baguio City, Philippines?"
+- Costs and probabilities are modeled estimates — call them estimates
+  on mic, never quotes.
+- Banned words anywhere: dashboard, command center, control tower,
+  console. (The 0:00 line contrasts "four dashboards" — cut that
+  sentence if the judges read it literally.)
+- Mic is optional; if shown, hold 3 seconds, release, then click Ask.
+- Keep agent reasoning visible; do not add UI features before recording.
