@@ -64,6 +64,12 @@ def test_card_is_dated_with_alternatives_and_fastest():
     assert "fastest_alternative" in script
 
 
+def test_ask_context_names_incident_default():
+    html = _card()
+    assert 'id="brief-ask-context"' in html
+    assert "Asking about: North Sea incident" in html
+
+
 def test_card_handles_single_relevant_mode():
     script = _card().split("<script>", 1)[1]
     assert "only one relevant mode" in script

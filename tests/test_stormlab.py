@@ -108,6 +108,17 @@ def test_lab_knob_rescores_selected_corridor(monkeypatch):
     assert sea_after["delay_hours"] == sea_before["delay_hours"] + 12
 
 
+def test_lab_ask_context_follows_picker():
+    html = _lab()
+    assert 'id="lab-ask-context"' in html
+    assert "Asking about: Rotterdam → Oslo (selected corridor)." in html
+    script = html.split("<script>", 1)[1]
+    assert "labRefreshAskContext" in script
+    assert "labAskContextLabel" in script
+    assert 'getElementById("lab-corridor").addEventListener("change"' in script
+    assert "labRefreshAskContext(snap.label" in script
+
+
 def test_lab_labels_estimates_and_picker():
     html = _lab()
     lowered = html.lower()

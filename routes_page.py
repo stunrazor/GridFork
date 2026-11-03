@@ -121,6 +121,7 @@ function rtStageQuery(hasQuery) {
 }
 function rtSetStagesBasis(snap) {
   const el = document.getElementById("rt-stages-basis");
+  const ask = document.getElementById("rt-ask-context");
   const eps = snap && snap.endpoints;
   if (eps && eps.origin && eps.dest) {
     rtStageCorridor = snap.corridor || "";
@@ -128,9 +129,12 @@ function rtSetStagesBasis(snap) {
     rtStageTo = eps.dest.name || "";
     el.textContent = "AI analysis and evidence \\u2014 basis: " + snap.label +
       ". Click to expand.";
+    ask.textContent = "Asking about: " + snap.label +
+      " (current basis) \\u2014 or name new places to move it.";
   } else {
     rtStageCorridor = ""; rtStageFrom = ""; rtStageTo = "";
     el.textContent = "AI analysis and evidence \\u2014 basis: North Sea incident. Click to expand.";
+    ask.textContent = "Asking about: North Sea incident \\u2014 or name any two places to ask worldwide.";
   }
 }
 document.getElementById("rt-summary-btn").addEventListener("click", async () => {
@@ -524,6 +528,8 @@ def render_routes_page(demo: dict) -> str:
         '<a href="/">Home</a></p>\n'
         "</header>\n"
         + ask_box.render_ask_box("rt")
+        + '<p id="rt-ask-context" class="note">Asking about: North Sea '
+        "incident &mdash; or name any two places to ask worldwide.</p>\n"
         + '<div class="hero">\n'
         f'<h2 id="rt-hero-title">Recommended: {top["option_id"]} &mdash; {top["title"]}</h2>\n'
         f'<p class="nums" id="rt-hero-nums">Score {top["score"]} &middot; ${top["cost_usd"]} '

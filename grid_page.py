@@ -88,7 +88,8 @@ Open the <a href="/demo/north-sea-storm/brief-card">shareable incident brief</a>
 the <a href="/demo/storm-lab">scenario lab</a>, the
 <a href="/demo/routes">route briefing</a>, or <a href="/">home</a>.</p>
 
-""" + ask_box.render_ask_box("grid") + """<h2>Specialist findings</h2>
+""" + ask_box.render_ask_box("grid") + """<p id="grid-ask-context" class="note">Asking about: North Sea incident &mdash; or name any two places to ask worldwide.</p>
+<h2>Specialist findings</h2>
 <div class="modes" id="modes"><p class="note">Loading&hellip;</p></div>
 
 <h2>Ranked reroutes</h2>

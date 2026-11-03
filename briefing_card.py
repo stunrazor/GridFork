@@ -182,6 +182,8 @@ def render_brief_card(demo: dict) -> str:
         '<a href="/">Home</a>.</p>\n'
         '<p class="note">Shareable page: print to PDF to distribute.</p>\n'
         + ask_box.render_ask_box("brief")
+        + '<p id="brief-ask-context" class="note">Asking about: North Sea '
+        "incident &mdash; or name any two places to ask worldwide.</p>\n"
         + "<h2>Recommendation</h2>\n"
         '<p><button id="brief-live-btn" type="button">Refresh live values</button>\n'
         '<span id="brief-live-note" class="note">Loading live values…</span></p>\n'

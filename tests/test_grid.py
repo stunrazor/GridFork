@@ -60,6 +60,12 @@ def test_page_avoids_banned_framing_words():
         assert word not in html
 
 
+def test_ask_context_names_incident_default():
+    html = render_grid_page()
+    assert 'id="grid-ask-context"' in html
+    assert "Asking about: North Sea incident" in html
+
+
 def test_findings_render_as_labeled_mode_cards():
     html = render_grid_page()
     assert "Specialist findings" in html

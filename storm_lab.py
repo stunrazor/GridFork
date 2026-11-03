@@ -66,7 +66,8 @@ _PAGE = """<!DOCTYPE html>
 scenario questions live in the <a href="/demo/routes">route briefing</a>. <a href="/">Home</a> &middot;
 <a href="/demo/grid">Back to the grid</a>.</p>
 
-""" + ask_box.render_ask_box("lab") + """<h2>Worldwide snapshot</h2>
+""" + ask_box.render_ask_box("lab") + """<p id="lab-ask-context" class="note">Asking about: Rotterdam → Oslo (selected corridor).</p>
+<h2>Worldwide snapshot</h2>
 <p class="note">Live four-mode ranking for any corridor: pick a preset or
 type two places. Runs the selected corridor on open and on click; Ask
 above grounds its answers in the corridor selected here.</p>
@@ -123,6 +124,16 @@ function labSnapshotURL() {
   if (pair) return "/snapshot?from=" + encodeURIComponent(pair[0]) + "&to=" + encodeURIComponent(pair[1]);
   return "/snapshot?corridor=" + document.getElementById("lab-corridor").value;
 }
+function labAskContextLabel() {
+  const pair = labCustomPair();
+  if (pair) return pair[0] + " → " + pair[1] + " (custom places)";
+  const sel = document.getElementById("lab-corridor");
+  return sel.options[sel.selectedIndex].text + " (selected corridor)";
+}
+function labRefreshAskContext(label) {
+  document.getElementById("lab-ask-context").textContent =
+    "Asking about: " + (label || labAskContextLabel()) + ".";
+}
 function labLegDetail(leg) {
   if (!leg.applicable) return leg.reason;
   if (leg.mode === "sea") return leg.wave_height_m + "m waves, " + leg.wind_kph + "kph wind [" + leg.marine_source + "/" + leg.wind_source + "]";
@@ -147,6 +158,7 @@ function labAskSnapshot(snap) {
     head.textContent = snap.label + " (" + snap.distance_km + "km). Fastest alternate: " +
       snap.fastest_alternative.option_id + " (" + snap.fastest_alternative.total_hours + "h total).";
     el.appendChild(head);
+    labRefreshAskContext(snap.label + " (" + snap.distance_km + "km, live)");
     const legs = document.createElement("table");
     const legHead = document.createElement("tr");
     ["Mode", "Status", "Live", "Delay", "Transit", "Detail"].forEach(t => {
@@ -190,6 +202,10 @@ function labAskSnapshot(snap) {
     el.appendChild(ranked);
 }
 document.getElementById("lab-snapshot-btn").addEventListener("click", labRunSnapshot);
+document.getElementById("lab-corridor").addEventListener("change", () => labRefreshAskContext());
+document.getElementById("lab-from").addEventListener("input", () => labRefreshAskContext());
+document.getElementById("lab-to").addEventListener("input", () => labRefreshAskContext());
+labRefreshAskContext();
 labRunSnapshot();
 function labWhatifQuestion() {
   const mode = document.getElementById("lab-mode").value;

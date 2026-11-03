@@ -111,6 +111,15 @@ def test_hero_leads_and_kpis_follow():
     assert html.index("rt-live-values-note") < html.index("Route comparison")
 
 
+def test_ask_context_follows_stage_basis():
+    html = _page()
+    assert 'id="rt-ask-context"' in html
+    assert "Asking about: North Sea incident" in html
+    script = html.split("<script>", 1)[1]
+    assert '"Asking about: " + snap.label' in script
+    assert "(current basis)" in script
+
+
 def test_hero_handles_single_relevant_mode():
     script = _page().split("<script>", 1)[1]
     assert "only one relevant mode" in script
