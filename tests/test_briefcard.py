@@ -50,6 +50,32 @@ def test_card_has_no_illustration_section():
     assert "Impacts" in html
 
 
+def test_card_is_dated_with_alternatives_and_fastest():
+    html = _card()
+    assert "Brief captured:" in html
+    assert "brief-captured" in html
+    assert "Alternatives, in order:" in html
+    assert "road-reroute, air-lift, sea-wait" in html
+    assert "brief-alts" in html
+    assert "Fastest:" in html
+    assert "brief-fastest" in html
+    script = html.split("<script>", 1)[1]
+    assert "toLocaleString()" in script
+    assert "fastest_alternative" in script
+
+
+def test_card_lists_sources_assumptions_and_labels():
+    html = _card()
+    assert "Evidence sources" in html
+    assert "brief-sources" in html
+    assert "Assumptions" in html
+    assert "How to read the numbers" in html
+    assert "always estimates" in html
+    script = html.split("<script>", 1)[1]
+    assert "snap.marine" in script
+    assert "snap.rail" in script
+
+
 def test_card_loads_live_values_on_open():
     html = _card()
     for target in (

@@ -574,3 +574,18 @@ def test_all_views_define_ask_snapshot_hook():
     assert "function rtAskSnapshot(snap)" in render_routes_page(run_demo())
     assert "function labAskSnapshot(snap)" in render_storm_lab()
     assert "function briefAskSnapshot(snap)" in render_brief_card(run_demo())
+
+
+def test_ask_is_one_shared_context_wired_control():
+    pages = {
+        "grid": render_grid_page(),
+        "rt": render_routes_page(run_demo()),
+        "lab": render_storm_lab(),
+        "brief": render_brief_card(run_demo()),
+    }
+    for prefix, html in pages.items():
+        assert f"{prefix}-ask-input" in html
+        assert f"{prefix}-ask-talk" in html
+        assert "/demo/north-sea-storm/ask" in html
+    assert "labAskContext()" in pages["lab"]
+    assert "rtStageQuery(true)" in pages["rt"]

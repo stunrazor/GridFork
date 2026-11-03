@@ -105,17 +105,49 @@ def score_options(options: list[dict]) -> list[dict]:
     return scored
 
 
+def top_pick_reasons(ranked_options: list[dict], limit: int = 3) -> list[str]:
+    """Short deterministic reasons the rank-1 pick won.
+
+    One line per metric the top pick uniquely leads, plus its score
+    margin over the runner-up. When it leads nothing outright the
+    margin line stands alone, so the result is never empty.
+    """
+    top = ranked_options[0]
+    rest = ranked_options[1:]
+    reasons = []
+    checks = (
+        ("cost_usd", False, "lowest cost", lambda v: f"${v:,}"),
+        ("time_saved_hours", True, "most time saved", lambda v: f"{v}h"),
+        ("on_time_probability", True, "best on-time odds", str),
+        ("confidence", True, "highest confidence", str),
+    )
+    for metric, higher, label, fmt in checks:
+        target = (max if higher else min)(o[metric] for o in ranked_options)
+        leaders = sum(1 for o in ranked_options if o[metric] == target)
+        if top[metric] == target and leaders == 1:
+            reasons.append(f"{label} ({fmt(target)})")
+    if rest:
+        margin = round(top["score"] - rest[0]["score"], 4)
+        reasons.append(f"beats {rest[0]['option_id']} by {margin} on score")
+    if len(reasons) > limit:
+        reasons = reasons[: limit - 1] + reasons[-1:]
+    return reasons
+
+
 def run_demo() -> dict:
     """End-to-end demo: findings first, then ranked reroute options."""
     scenario = load_scenario()
     findings = collect_findings(scenario)
     options = build_options(findings, scenario["baseline"]["storm_delay_hours_if_waiting"])
+    ranked = score_options(options)
     return {
         "scenario": scenario["scenario"],
         "synthetic": True,
         "label": scenario["label"],
         "findings": findings,
-        "ranked_options": score_options(options),
+        "ranked_options": ranked,
+        "top_reasons": top_pick_reasons(ranked),
+        "fastest_alternative": fastest_alternative(scenario),
     }
 
 
@@ -1153,6 +1185,7 @@ def run_live_snapshot() -> dict:
     scenario, provenance, marine, wind, air, road, rail = _snapshot_parts()
     findings = collect_findings(scenario)
     options = build_options(findings, scenario["baseline"]["storm_delay_hours_if_waiting"])
+    ranked = score_options(options)
     return {
         "scenario": scenario["scenario"],
         "synthetic": False,
@@ -1165,7 +1198,9 @@ def run_live_snapshot() -> dict:
         "rail": rail,
         "provenance": provenance,
         "findings": findings,
-        "ranked_options": score_options(options),
+        "ranked_options": ranked,
+        "top_reasons": top_pick_reasons(ranked),
+        "fastest_alternative": fastest_alternative(scenario),
     }
 
 

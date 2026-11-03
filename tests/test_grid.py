@@ -10,12 +10,12 @@ def test_page_calls_the_json_endpoints():
     for path in (
         "/demo/north-sea-storm",
         "/demo/north-sea-storm/summary",
-        "/demo/north-sea-storm/weather",
         "/demo/north-sea-storm/brief",
         "/demo/north-sea-storm/openweights",
         "/demo/north-sea-storm/openweights/ask",
     ):
         assert path in html
+    assert "Live wind layer" not in html
 
 
 def test_page_has_ranking_without_stage_tools():
@@ -33,7 +33,8 @@ def test_page_has_ranking_without_stage_tools():
 
 def test_page_has_optional_meta_models_section():
     html = render_grid_page()
-    assert "Meta Models (optional)" in html
+    assert "AI analysis and evidence" in html
+    assert "<details" in html
     assert "Explain this scenario" in html
     assert "Check Spark Open runner" in html
     assert "Check Glimmer runner" in html
@@ -57,3 +58,23 @@ def test_page_avoids_banned_framing_words():
     html = render_grid_page().lower()
     for word in BANNED_WORDS:
         assert word not in html
+
+
+def test_findings_render_as_labeled_mode_cards():
+    html = render_grid_page()
+    assert "Specialist findings" in html
+    script = html.split("<script>", 1)[1]
+    assert "mode-card" in script
+    assert "layerInfo" in script
+    for label in ("Live", "Estimated", "Unavailable"):
+        assert label in script
+    assert "updated " in script
+
+
+def test_ranking_renders_as_cards_not_table():
+    html = render_grid_page()
+    assert "Ranked reroutes" in html
+    assert 'id="ranking"' in html
+    assert "<table" not in html
+    script = html.split("<script>", 1)[1]
+    assert "opt-card" in script

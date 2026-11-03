@@ -129,7 +129,7 @@ def test_live_endpoint_shape(monkeypatch):
 def test_grid_page_has_live_snapshot_section():
     html = render_grid_page()
     assert "Live snapshot" in html
-    assert "Switch live/baseline tables" in html
+    assert "Switch live/baseline view" in html
     assert "measured" in html.lower()
     script = html.split("<script>", 1)[1]
     assert script.count("/demo/north-sea-storm/live") == 2

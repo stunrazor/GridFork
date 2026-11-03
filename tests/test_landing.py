@@ -23,7 +23,8 @@ def test_landing_links_all_four_views():
         "/demo/north-sea-storm/brief-card",
     ):
         assert f'href="{path}"' in html
-    assert "Route briefing" in html
+    assert "What needs attention?" in html
+    assert 'class="cta" href="/demo/routes"' in html
     assert "Live grid" in html
     assert "Scenario lab" in html
     assert "Incident brief" in html
@@ -33,6 +34,16 @@ def test_landing_labels_estimates_and_on_demand():
     lowered = render_landing().lower()
     assert "estimates" in lowered
     assert "on demand" in lowered or "on-demand" in lowered
+
+
+def test_home_attention_panel_loads_live_snapshot():
+    html = render_landing()
+    assert 'id="attention"' in html
+    assert "Corridor:" in html
+    assert "Data as of" in html
+    script = html.split("<script>", 1)[1]
+    assert "/demo/north-sea-storm/live" in script
+    assert "innerHTML" not in script
 
 
 def test_landing_avoids_banned_framing_words():

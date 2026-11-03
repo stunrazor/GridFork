@@ -34,12 +34,21 @@ _CSS = """
   input { font-size: 0.9rem; padding: 0.35rem 0.5rem; width: 65%;
           background: #0b1526; color: #f4f7fb; border: 1px solid #2a3a55; }
   .note { font-size: 0.85rem; color: #c3cede; }
+  ul.note { padding-left: 1.2rem; }
+  ul.note li { margin: 0.2rem 0; }
   .ask-out { background: #131f33; border: 1px solid #2a3a55;
              padding: 0.6rem 0.8rem; margin-top: 0.5rem; min-height: 2.5rem;
              font-size: 0.9rem; }
   footer { margin-top: 2rem; font-size: 0.8rem; color: #c3cede;
            border-top: 1px solid #2a3a55; padding-top: 0.5rem; }
   code { background: #1b2942; padding: 0 0.25rem; }
+  @media (max-width: 40rem) {
+    body { font-size: 1.06rem; }
+    .note, .sub, footer { font-size: 0.95rem; }
+    button, input, table { font-size: 1rem; }
+    th, td { padding: 0.45rem 0.6rem; }
+    table { display: block; overflow-x: auto; }
+  }
   @media print {
     button, input { display: none; }
     body { background: #fff; color: #000; }
@@ -82,6 +91,19 @@ function briefAskSnapshot(snap) {
       "Tradeoff vs " + run.option_id + ": top pick " +
       (costGap >= 0 ? "saves $" + costGap : "costs $" + (-costGap) + " more") +
       " and " + (timeGap >= 0 ? "saves " + timeGap + "h more" : "saves " + (-timeGap) + "h less") + ".";
+    const fa = snap.fastest_alternative;
+    document.getElementById("brief-fastest").textContent =
+      "Fastest: " + fa.option_id + " (" + fa.total_hours + "h total)";
+    document.getElementById("brief-alts").textContent =
+      "Alternatives, in order: " +
+      snap.ranked_options.slice(1).map(o => o.option_id).join(", ") + ".";
+    document.getElementById("brief-captured").textContent =
+      "Brief captured: " + new Date().toLocaleString() + " (" + snap.label + ").";
+    const src = (l) => (l && l.source) || "reference incident";
+    document.getElementById("brief-sources").textContent =
+      "sea: " + src(snap.marine) + " / " + src(snap.wind) +
+      "; air: " + src(snap.air) + "; road: " + src(snap.road) +
+      "; rail: " + src(snap.rail) + ".";
     const impacts = document.getElementById("brief-findings-body");
     impacts.textContent = "";
     snap.findings.forEach(f => {
@@ -161,13 +183,18 @@ def render_brief_card(demo: dict) -> str:
         + "<h2>Recommendation</h2>\n"
         '<p><button id="brief-live-btn" type="button">Refresh live values</button>\n'
         '<span id="brief-live-note" class="note">Loading live values…</span></p>\n'
+        '<p id="brief-captured" class="note">Brief captured: —</p>\n'
         '<div class="rec">\n'
         f'<p id="brief-rec-title"><strong>{top["option_id"]}</strong> &mdash; {top["title"]}</p>\n'
         f'<p id="brief-rec-nums">Score {top["score"]} &middot; ${top["cost_usd"]} '
         f'&middot; saves {top["time_saved_hours"]}h '
         f'&middot; on-time {top["on_time_probability"]} '
         f'&middot; confidence {top["confidence"]}</p>\n'
+        f'<p id="brief-fastest">Fastest: {demo["fastest_alternative"]["option_id"]} '
+        f'({demo["fastest_alternative"]["total_hours"]}h total)</p>\n'
         f"<p id=\"brief-tradeoff\">{_tradeoff_line(demo['ranked_options'])}</p>\n"
+        f'<p id="brief-alts">Alternatives, in order: '
+        f'{", ".join(o["option_id"] for o in demo["ranked_options"][1:])}.</p>\n'
         "</div>\n"
         "<h2>Impacts</h2>\n<table>\n"
         "<tr><th>Mode</th><th>Status</th><th>Delay</th><th>On-time</th></tr>\n"
@@ -180,6 +207,24 @@ def render_brief_card(demo: dict) -> str:
         '<tbody id="brief-ranking-body">\n'
         + ranking_rows
         + "</tbody>\n</table>\n"
+        "<h2>Evidence sources</h2>\n"
+        '<p id="brief-sources" class="note">reference incident</p>\n'
+        "<h2>Assumptions</h2>\n"
+        '<ul class="note">\n'
+        "<li>Costs, on-time odds, and confidence are modeled estimates, "
+        "not quotes or measurements.</li>\n"
+        "<li>Delays follow documented rules from measured conditions "
+        "where feeds reach; otherwise estimated defaults.</li>\n"
+        "<li>Transit legs assume standard freight speeds and handling; "
+        "no booking, capacity, or customs checks.</li>\n"
+        "</ul>\n"
+        "<h2>How to read the numbers</h2>\n"
+        '<ul class="note">\n'
+        "<li>Delay hours: measured where a feed covers the leg, "
+        "estimated otherwise.</li>\n"
+        "<li>Cost, on-time, confidence: always estimates.</li>\n"
+        "<li>Status: available, degraded, or disrupted per leg.</li>\n"
+        "</ul>\n"
         "<footer>\n<p>Sources: deterministic scoring (always) &middot; "
         "live measured legs with provenance &middot; Ask GridFork "
         "(Spark/Wonder routing, paid, click only). Costs and probabilities "

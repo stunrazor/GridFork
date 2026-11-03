@@ -406,6 +406,9 @@ def build_snapshot(
         },
         "findings": ranked_modes["findings"],
         "ranked_options": ranked_modes["ranked_options"],
+        "top_reasons": orchestrator.top_pick_reasons(
+            ranked_modes["ranked_options"]
+        ),
         "fastest_alternative": ranked_modes["fastest_alternative"],
     }
 

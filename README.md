@@ -15,7 +15,7 @@ quantified reroutes on Cost, Time Saved, On-Time Probability, and Confidence.
   reference incident data; live snapshots run the same engine over
   measured conditions.
 - Ask GridFork: the `/ask?q=` box tops every view and answers worldwide routes only, grounded solely in places you name
-  (typed, dictated, or picked in the lab), never a default location. Scenario
+  (typed, dictated, picked in the lab, or the briefing's asked corridor), never a default location. Scenario
   and why-questions route to Muse Wonder, facts to Muse Spark, and every
   answer carries the deterministic fastest alternate across all four modes
   (paid per question, click only). Questions without places get free guidance
@@ -34,7 +34,7 @@ quantified reroutes on Cost, Time Saved, On-Time Probability, and Confidence.
 - Ask-as-basis stages: `/summary`, `/whatif`, `/vision`, `/image`, and
   `/challenge` each accept `?corridor=` or `?from=&to=` and run against
   that asked corridor; Route Briefing adopts the latest ask as the basis
-  line above the stage columns.
+  of its collapsed AI analysis and evidence area.
 - Phase 1 real data: the `/live` snapshot feeds measured North Sea wave
   height (Open-Meteo Marine, keyless) and Rotterdam wind into the sea leg
   through an explicit documented rule; costs and probabilities stay
@@ -55,9 +55,9 @@ quantified reroutes on Cost, Time Saved, On-Time Probability, and Confidence.
 
 ## Endpoints
 
-- `GET /` — landing page with buttons to every view
+- `GET /` — home: live attention panel (corridor, worst disruption, freshness), one primary briefing button, shortcuts to the other views
 - `GET /health`
-- `GET /demo/grid` — observable grid page (findings, ranking, wind, runner checks)
+- `GET /demo/grid` — live grid: four labeled mode cards, ranked cards, live/baseline view, collapsible AI analysis and evidence
 - `GET /demo/north-sea-storm` — findings plus ranked options (JSON)
 - `GET /demo/north-sea-storm/summary` — plus Spark narrative rationale (`?corridor=` / `?from=&to=` for an asked corridor)
 - `GET /demo/north-sea-storm/vision` — plus SAM ground truth (`?image_url=`, `?corridor=` / `?from=&to=`)
@@ -70,10 +70,10 @@ quantified reroutes on Cost, Time Saved, On-Time Probability, and Confidence.
 - `GET /demo/north-sea-storm/openweights?model=` — Spark Open / Glimmer runner setup status (`spark-open`, `glimmer`)
 - `GET /demo/north-sea-storm/whatif?q=` — Wonder assumptions plus before/after ranking for a what-if question (`?corridor=` / `?from=&to=`)
 - `GET /demo/north-sea-storm/challenge?models=` — open-weight route challenge: both models critique three fixed cases, scored on agreement, schema validity, latency, and tokens (`?corridor=` / `?from=&to=`, `&mock=true` for canned critiques)
-- `GET /demo/north-sea-storm/brief-card` — shareable incident brief page (deterministic text, print-friendly; scenario tools live in the route briefing)
-- `GET /demo/storm-lab` — Scenario lab: worldwide snapshot runner (presets or custom places, Ask grounded in the corridor); scenario tools live in the route briefing
+- `GET /demo/north-sea-storm/brief-card` — dated shareable brief: recommendation, impacts, alternatives, evidence sources, assumptions, estimate labels; print-friendly
+- `GET /demo/storm-lab` — Scenario lab: worldwide snapshot runner (presets or custom places, Ask grounded in the corridor) plus a single-assumption what-if with observed/hypothetical before/after; free-form stages live in the route briefing
 - `POST /demo/north-sea-storm/transcribe` — Muse Voice Transcribe for one base64 WAV clip (`{"audio_b64", "filename"}`)
-- `GET /demo/routes` — route briefing: hero recommendation, KPI strip, comparison plus SVG schematic, side brief, and Evidence / What-if / Bench / Visual stages
+- `GET /demo/routes` — route briefing: hero verdict with fastest-vs-best and win reasons, KPI strip, comparison cards, side brief, collapsible AI analysis and evidence (schematic plus stages)
 
 ## Run it
 

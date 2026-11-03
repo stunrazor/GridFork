@@ -44,7 +44,6 @@ def test_lab_runs_snapshot_and_ask_only():
     assert script.count("/snapshot?corridor=") == 1
     assert script.count("/snapshot?from=") == 1
     for gone in (
-        "/demo/north-sea-storm/whatif?q=",
         "/demo/north-sea-storm/challenge?models=",
         "/demo/north-sea-storm/image",
     ):
@@ -53,6 +52,60 @@ def test_lab_runs_snapshot_and_ask_only():
     assert script.count("/demo/north-sea-storm/transcribe") == 1
     assert script.count("getUserMedia") == 1
     assert script.count("pointerdown") == 1
+
+
+def test_lab_single_knob_whatif_form():
+    html = _lab()
+    assert "Change one assumption" in html
+    for target in ("lab-mode", "lab-field", "lab-delta", "lab-whatif-btn",
+                   "lab-whatif-out", "Compare before/after"):
+        assert target in html
+    script = html.split("<script>", 1)[1]
+    assert "labWhatifQuestion" in script
+    assert "labWhatifContext" in script
+    assert script.count("/demo/north-sea-storm/whatif?q=") == 1
+    assert "Observed top:" in script
+    assert "Hypothetical:" in script
+    assert "innerHTML" not in script
+
+
+def test_lab_generated_questions_parse_offline():
+    from wonder_client import deterministic_whatif
+
+    delay = deterministic_whatif("What if sea has 12 more hours of delay?")
+    assert delay["assumptions"] == [
+        {"mode": "sea", "field": "delay_hours", "delta": 12,
+         "reason": "Parsed '12 more hours'."}
+    ]
+    relief = deterministic_whatif("What if road saves 4 hours?")
+    assert relief["assumptions"] == [
+        {"mode": "road", "field": "delay_hours", "delta": -4,
+         "reason": "Parsed '4 hours'."}
+    ]
+    cost = deterministic_whatif("What if air costs $2000 more?")
+    assert cost["assumptions"] == [
+        {"mode": "air", "field": "cost_usd", "delta": 2000,
+         "reason": "Parsed '$2000'."}
+    ]
+
+
+def test_lab_knob_rescores_selected_corridor(monkeypatch):
+    import snapshot as snapshot_mod
+    from orchestrator import run_whatif
+    from tests.test_worldwide import _patch_live_layers
+
+    monkeypatch.delenv("META_MODEL_API_KEY", raising=False)
+    _patch_live_layers(monkeypatch)
+    snap = snapshot_mod.snapshot_for_corridor("north-sea")
+    body = run_whatif("What if sea has 12 more hours of delay?",
+                      snapshot=snap)
+    assert body["whatif"]["assumptions"][0]["mode"] == "sea"
+    assert body["whatif"]["assumptions"][0]["delta"] == 12
+    assert body["ranked_baseline"] == snap["ranked_options"]
+    sea_after = next(f for f in body["findings_after"]
+                     if f["mode"] == "sea")
+    sea_before = next(f for f in snap["findings"] if f["mode"] == "sea")
+    assert sea_after["delay_hours"] == sea_before["delay_hours"] + 12
 
 
 def test_lab_labels_estimates_and_picker():

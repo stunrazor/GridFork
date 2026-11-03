@@ -18,7 +18,7 @@ def test_grid_live_button_rerenders_tables():
 
 def test_grid_loads_live_on_open():
     html = render_grid_page()
-    assert "Switch live/baseline tables" in html
+    assert "Switch live/baseline view" in html
     script = html.split("<script>", 1)[1]
     assert 'renderDemo(await getJSON("/demo/north-sea-storm/live"))' in script
     assert "let liveOn = true;" in script
@@ -34,10 +34,10 @@ def test_routes_live_values_button_updates_hero_kpis_table():
     html = render_routes_page(run_demo())
     assert "rt-live-values-btn" in html
     assert "rt-hero-title" in html
-    assert "rt-comp-body" in html
+    assert "rt-comp-list" in html
     script = html.split("<script>", 1)[1]
     assert script.count("/demo/north-sea-storm/live") == 1
-    for target in ("rt-hero-title", "rt-hero-second", "rt-kpi-score", "rt-comp-body"):
+    for target in ("rt-hero-title", "rt-hero-second", "rt-kpi-score", "rt-comp-list"):
         assert target in script
     assert 'id="rt-schem-sea-bar"' in html
     assert 'id="rt-schem-sea-text"' in html

@@ -51,9 +51,34 @@ def render_grid_page() -> str:
              padding: 0.6rem 0.8rem; margin-top: 0.5rem; min-height: 2.5rem;
              font-size: 0.9rem; }
   .src { font-size: 0.8rem; color: #c3cede; }
+  .mode-card { background: #131f33; border: 1px solid #2a3a55;
+              padding: 0.7rem 0.85rem; }
+  .mode-card h3 { margin: 0 0 0.3rem; font-size: 1rem; text-transform: capitalize; }
+  .mode-card .big { font-size: 1.1rem; font-weight: bold; margin: 0.25rem 0; }
+  .mode-card .meta { font-size: 0.82rem; color: #c3cede; }
+  .opt-cards { display: grid; gap: 0.6rem; }
+  .opt-card { background: #131f33; border: 1px solid #2a3a55;
+             padding: 0.6rem 0.8rem; }
+  .opt-card.top { border-color: #7dd3fc; border-width: 2px; }
+  .opt-card .nums { color: #7dd3fc; }
+  .lbl { display: inline-block; font-size: 0.72rem; font-weight: bold;
+         padding: 0.1rem 0.45rem; border: 1px solid #666; margin-left: 0.3rem; }
+  .lbl-live { border-color: #4ade80; color: #4ade80; }
+  .lbl-est { border-color: #f5b942; color: #f5b942; }
+  .lbl-una { border-color: #666; color: #c3cede; }
+  details.evidence { margin-top: 2rem; border: 1px solid #2a3a55;
+                    background: #131f33; padding: 0.6rem 0.9rem; }
+  details.evidence summary { cursor: pointer; font-size: 1rem; font-weight: bold; }
   footer { margin-top: 2rem; font-size: 0.8rem; color: #c3cede;
            border-top: 1px solid #2a3a55; padding-top: 0.5rem; }
   code { background: #1b2942; padding: 0 0.25rem; }
+  @media (max-width: 60rem) { .modes { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 40rem) {
+    body { font-size: 1.06rem; }
+    .modes { grid-template-columns: 1fr; }
+    .note, .sub, footer, .mode-card .meta { font-size: 0.95rem; }
+    button, input { font-size: 1rem; }
+  }
 </style>
 </head>
 <body>
@@ -67,15 +92,12 @@ the <a href="/demo/storm-lab">scenario lab</a>, the
 <div class="modes" id="modes"><p class="note">Loading&hellip;</p></div>
 
 <h2>Ranked reroutes</h2>
-<table id="ranking"><tr><td class="note">Loading&hellip;</td></tr></table>
+<div class="opt-cards" id="ranking"><p class="note">Loading&hellip;</p></div>
 <p class="note">Scenario tools &mdash; what-if, evidence, bench, illustration
 &mdash; live in the <a href="/demo/routes">route briefing</a>.</p>
 
 <h2>Narrative summary</h2>
 <p id="summary" class="note">Loading&hellip;</p>
-
-<h2>Live wind layer</h2>
-<p id="weather" class="note">Loading&hellip;</p>
 
 <h2>Live snapshot</h2>
 <p class="note">Phase 1 real data: measured North Sea waves and Rotterdam wind
@@ -85,10 +107,11 @@ transit, rail disruptions via NS, DB, or keyless Entur) join the snapshot;
 keyed layers without keys stay estimated and report setup-required.
 Costs and probabilities stay estimates; provenance is shown per
 field. Loads live on open; the button flips back to the baseline.</p>
-<button id="live-btn" type="button">Switch live/baseline tables</button>
+<button id="live-btn" type="button">Switch live/baseline view</button>
 <p id="live" class="note">Loading live values…</p>
 
-<h2>Meta Models (optional)</h2>
+<details class="evidence">
+<summary>AI analysis and evidence (optional)</summary>
 <p class="note">On-demand extras. Nothing here runs on page load. The Wonder
 explanation is a paid Meta API call; open weights need a local runner.</p>
 <h3>Muse Wonder &mdash; decision explanation</h3>
@@ -106,6 +129,7 @@ These buttons only check runner setup; they start nothing.</p>
 <button id="ow-ask-glimmer-btn" type="button">Classify with Glimmer</button>
 <p id="ow-ask-spark" class="note">Not run yet.</p>
 <p id="ow-ask-glimmer" class="note">Not run yet.</p>
+</details>
 <footer>
 <p>Sources: deterministic scoring (always) &middot; Muse Spark summary
 (<code>source: muse-spark</code> live, <code>deterministic</code> offline) &middot;
@@ -127,31 +151,53 @@ async function getJSON(path) {
 function pill(status) {
   return '<span class="pill ' + status + '">' + status + '</span>';
 }
+function layerInfo(demo, mode) {
+  const byMode = {sea: [demo.marine, demo.wind], air: [demo.air],
+    road: [demo.road], rail: [demo.rail]};
+  const present = (byMode[mode] || []).filter(Boolean);
+  if (!present.length)
+    return {sources: "reference incident", updated: "n/a",
+      label: "Estimated", cls: "lbl-est"};
+  const sources = present.map(l => l.source).join(" / ");
+  const stamps = present.map(l => l.observed_at).filter(Boolean).sort();
+  const live = present.some(l => l.live);
+  const na = present.every(l => l.source === "not-applicable");
+  return {
+    sources: sources,
+    updated: stamps.length ? stamps[stamps.length - 1] : "unknown",
+    label: live ? "Live" : (na ? "Unavailable" : "Estimated"),
+    cls: live ? "lbl-live" : (na ? "lbl-una" : "lbl-est")
+  };
+}
 function renderDemo(demo) {
-  document.getElementById("modes").innerHTML = demo.findings.map(f =>
-    '<div class="mode"><h3>' + f.mode + ' ' + pill(f.status) + '</h3>' +
-    '<div>delay +' + f.delay_hours + 'h &middot; on-time ' +
-    f.on_time_probability + '</div></div>').join("");
-  const rows = demo.ranked_options.map(o =>
-    '<tr class="' + (o.rank === 1 ? "top" : "") + '"><td>' + o.rank +
-    '</td><td>' + o.option_id + '</td><td>' + o.score + '</td><td>$' +
-    o.cost_usd + '</td><td>' + o.time_saved_hours + 'h</td><td>' +
-    o.on_time_probability + '</td><td>' + o.confidence + '</td></tr>').join("");
-  document.getElementById("ranking").innerHTML =
-    "<tr><th>#</th><th>Option</th><th>Score</th><th>Cost</th>" +
-    "<th>Saved</th><th>On-time</th><th>Conf.</th></tr>" + rows;
+  document.getElementById("modes").innerHTML = demo.findings.map(f => {
+    const info = layerInfo(demo, f.mode);
+    return '<div class="mode-card"><h3>' + f.mode + ' ' + pill(f.status) +
+      '<span class="lbl ' + info.cls + '">' + info.label + '</span></h3>' +
+      '<div class="big">+' + f.delay_hours + 'h delay &middot; on-time ' +
+      f.on_time_probability + '</div>' +
+      '<div class="meta">' + info.sources + ' &middot; updated ' +
+      info.updated + '</div></div>';
+  }).join("");
+  document.getElementById("ranking").innerHTML = demo.ranked_options.map(o =>
+    '<div class="opt-card' + (o.rank === 1 ? " top" : "") + '"><strong>#' +
+    o.rank + " " + o.option_id + "</strong> &mdash; " + o.title +
+    '<div class="nums">score ' + o.score + " &middot; $" + o.cost_usd +
+    " &middot; saves " + o.time_saved_hours + "h &middot; on-time " +
+    o.on_time_probability + " &middot; confidence " + o.confidence +
+    "</div></div>").join("");
 }
 function gridAskSnapshot(snap) {
   renderDemo(snap);
   document.getElementById("live").textContent =
-    "Tables show the asked corridor (" + snap.label + "); use the button for baseline/live views.";
+    "Cards show the asked corridor (" + snap.label + "); use the button for baseline/live views.";
 }
 async function loadDemo() {
   try {
     renderDemo(await getJSON("/demo/north-sea-storm/live"));
     liveOn = true;
     document.getElementById("live").textContent =
-      "Tables show live values; use the button for the storm scenario.";
+      "Cards show live values; use the button for the storm scenario.";
   } catch (e) {
     renderDemo(await getJSON("/demo/north-sea-storm"));
     document.getElementById("live").textContent =
@@ -166,14 +212,6 @@ async function loadSummary() {
       "[" + s.source + "] " + s.text;
   } catch (e) { document.getElementById("summary").textContent = String(e); }
 }
-async function loadWeather() {
-  try {
-    const w = await getJSON("/demo/north-sea-storm/weather");
-    document.getElementById("weather").textContent =
-      (w.live ? "LIVE " : "FALLBACK ") + w.source + ": Rotterdam wind " +
-      w.wind_kph + " kph" + (w.observed_at ? " at " + w.observed_at : "");
-  } catch (e) { document.getElementById("weather").textContent = String(e); }
-}
 let liveOn = true;
 document.getElementById("live-btn").addEventListener("click", async () => {
   const el = document.getElementById("live");
@@ -182,7 +220,7 @@ document.getElementById("live-btn").addEventListener("click", async () => {
     const snap = liveOn ? await getJSON("/demo/north-sea-storm")
       : await getJSON("/demo/north-sea-storm/live");
     renderDemo(snap);
-    if (liveOn) { el.textContent = "Tables show the baseline; click again for live values."; }
+    if (liveOn) { el.textContent = "Cards show the baseline; click again for live values."; }
     else {
     const top = snap.ranked_options[0];
     const sea = snap.findings.find(f => f.mode === "sea");
@@ -203,7 +241,7 @@ document.getElementById("live-btn").addEventListener("click", async () => {
       "; rail " + snap.rail.source +
       (snap.rail.live ? " " + snap.rail.active_count + " active" : "") +
       "; top pick now " + top.option_id + " at score " + top.score + "." +
-      " Tables now show live values; click again for the baseline.";
+      " Cards now show live values; click again for the baseline.";
     }
     liveOn = !liveOn;
   } catch (e) { el.textContent = String(e); }
@@ -245,7 +283,6 @@ document.getElementById("ow-ask-glimmer-btn").addEventListener("click",
   () => askRunner("glimmer", "ow-ask-glimmer"));
 loadDemo().catch(e => { document.getElementById("modes").textContent = String(e); });
 loadSummary();
-loadWeather();
 </script>
 """ + ask_box.render_ask_script("grid") + """</body>
 </html>

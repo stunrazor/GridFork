@@ -51,12 +51,19 @@ _PAGE = """<!DOCTYPE html>
   footer { margin-top: 2rem; font-size: 0.8rem; color: #c3cede;
            border-top: 1px solid #2a3a55; padding-top: 0.5rem; }
   code { background: #1b2942; padding: 0 0.25rem; }
+  @media (max-width: 40rem) {
+    body { font-size: 1.06rem; }
+    .note, .sub, footer { font-size: 0.95rem; }
+    button, input, select, table { font-size: 1rem; }
+    th, td { padding: 0.45rem 0.6rem; }
+    table { display: block; overflow-x: auto; }
+  }
 </style>
 </head>
 <body>
 <h1>GridFork scenario lab</h1>
-<p class="sub">Corridor picker beside the live grid. Live data with labeled estimates.
-Scenario tools live in the <a href="/demo/routes">route briefing</a>. <a href="/">Home</a> &middot;
+<p class="sub">Corridor picker with Ask grounded in your pick. Free-form
+scenario questions live in the <a href="/demo/routes">route briefing</a>. <a href="/">Home</a> &middot;
 <a href="/demo/grid">Back to the grid</a>.</p>
 
 """ + ask_box.render_ask_box("lab") + """<h2>Worldwide snapshot</h2>
@@ -68,6 +75,24 @@ above grounds its answers in the corridor selected here.</p>
 <input id="lab-to" placeholder="To (custom place)" style="width: 25%">
 <button id="lab-snapshot-btn" type="button">Run live snapshot</button>
 <div id="lab-snapshot-out" class="note">Loading default corridor…</div>
+
+<h2>Change one assumption</h2>
+<p class="note">Observed snapshot above; one hypothetical tweak below. The
+engine rescores the selected corridor, so you compare observed reality
+against exactly one change.</p>
+<p><select id="lab-mode">
+<option value="sea">Sea</option>
+<option value="air">Air</option>
+<option value="road">Road</option>
+<option value="rail">Rail</option>
+</select>
+<select id="lab-field">
+<option value="delay_hours">added delay (hours)</option>
+<option value="cost_usd">added cost (USD)</option>
+</select>
+<input id="lab-delta" type="number" value="6" min="-48" max="100000" step="1">
+<button id="lab-whatif-btn" type="button">Compare before/after</button></p>
+<div id="lab-whatif-out" class="note">No hypothetical yet.</div>
 
 <footer>
 <p>Sources: deterministic scoring (always) &middot; live corridor legs
@@ -166,6 +191,61 @@ function labAskSnapshot(snap) {
 }
 document.getElementById("lab-snapshot-btn").addEventListener("click", labRunSnapshot);
 labRunSnapshot();
+function labWhatifQuestion() {
+  const mode = document.getElementById("lab-mode").value;
+  const field = document.getElementById("lab-field").value;
+  const delta = parseInt(document.getElementById("lab-delta").value, 10) || 0;
+  if (field === "cost_usd")
+    return "What if " + mode + " costs $" + Math.abs(delta) + " more?";
+  if (delta < 0)
+    return "What if " + mode + " saves " + Math.abs(delta) + " hours?";
+  return "What if " + mode + " has " + delta + " more hours of delay?";
+}
+function labWhatifContext() {
+  const pair = labCustomPair();
+  if (pair) return "&from=" + encodeURIComponent(pair[0]) + "&to=" + encodeURIComponent(pair[1]);
+  return "&corridor=" + document.getElementById("lab-corridor").value;
+}
+document.getElementById("lab-whatif-btn").addEventListener("click", async () => {
+  const el = document.getElementById("lab-whatif-out");
+  el.textContent = "Rescoring with one hypothetical change…";
+  try {
+    const q = labWhatifQuestion();
+    const body = await getJSON("/demo/north-sea-storm/whatif?q=" +
+      encodeURIComponent(q) + labWhatifContext());
+    el.textContent = "";
+    const hypo = document.createElement("p");
+    hypo.textContent = "Hypothetical: " + body.whatif.explanation +
+      " [" + body.whatif.source + "]";
+    el.appendChild(hypo);
+    const tops = document.createElement("p");
+    const before = body.ranked_baseline[0];
+    const after = body.ranked_options[0];
+    tops.textContent = "Observed top: " + before.option_id + " (score " +
+      before.score + ") → hypothetical top: " + after.option_id +
+      " (score " + after.score + ").";
+    el.appendChild(tops);
+    const table = document.createElement("table");
+    const head = document.createElement("tr");
+    ["Option", "Observed rank/score", "Hypothetical rank/score"].forEach(t => {
+      const th = document.createElement("th");
+      th.textContent = t;
+      head.appendChild(th);
+    });
+    table.appendChild(head);
+    body.comparison.forEach(c => {
+      const tr = document.createElement("tr");
+      [c.option_id, c.rank_before + " / " + c.score_before,
+       c.rank_after + " / " + c.score_after].forEach(v => {
+        const td = document.createElement("td");
+        td.textContent = v;
+        tr.appendChild(td);
+      });
+      table.appendChild(tr);
+    });
+    el.appendChild(table);
+  } catch (e) { el.textContent = String(e); }
+});
 </script>
 """ + ask_box.render_ask_script("lab", extra=" + labAskContext()") + """</body>
 </html>

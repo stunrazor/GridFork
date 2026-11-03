@@ -256,7 +256,45 @@ def _routes_html():
 def test_routes_declares_stage_basis_element():
     html = _routes_html()
     assert 'id="rt-stages-basis"' in html
-    assert "Evidence stages basis: North Sea incident." in html
+    assert "AI analysis and evidence" in html
+    assert "basis: North Sea incident" in html
+    assert "<details" in html
+
+
+def test_routes_hero_shows_fastest_and_why_it_wins():
+    html = _routes_html()
+    assert "rt-hero-fastest" in html
+    assert "Fastest:" in html
+    assert "Why it wins:" in html
+    assert "rt-hero-why" in html
+    script = html.split("<script>", 1)[1]
+    assert "fastest_alternative" in script
+    assert "top_reasons" in script
+
+
+def test_routes_comparison_renders_cards():
+    html = _routes_html()
+    assert "Route comparison" in html
+    assert 'id="rt-comp-list"' in html
+    assert "<table" not in html.split("</details>", 1)[0].split("<body>", 1)[1]
+    assert "opt-card" in html
+
+
+def test_routes_ask_grounds_in_stage_basis():
+    html = _routes_html()
+    assert "rtStageQuery(true)" in html
+
+
+def test_top_pick_reasons_name_margin_and_leads():
+    demo = orchestrator.run_demo()
+    reasons = orchestrator.top_pick_reasons(demo["ranked_options"])
+    assert 1 <= len(reasons) <= 3
+    assert reasons[-1].startswith("beats road-reroute by ")
+    assert demo["top_reasons"] == reasons
+    fastest = demo["fastest_alternative"]
+    assert fastest["total_hours"] == round(
+        fastest["transit_hours"] + fastest["delay_hours"], 1
+    )
 
 
 def test_routes_stages_follow_ask_context():
@@ -264,7 +302,8 @@ def test_routes_stages_follow_ask_context():
     assert "rtSetStagesBasis(snap)" in html
     assert "function rtStageParams()" in html
     assert html.count("rtStageQuery(false)") == 3
-    assert html.count("rtStageQuery(true)") == 2
+    # what-if fetch, bench fetch, and Ask grounding.
+    assert html.count("rtStageQuery(true)") == 3
 
 
 def test_routes_pill_handles_missing_sea():

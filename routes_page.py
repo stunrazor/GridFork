@@ -50,6 +50,16 @@ _CSS = """
   .stages { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem;
             margin-top: 1rem; }
   .stage-col { display: flex; flex-direction: column; gap: 1rem; }
+  .opt-cards { display: grid; gap: 0.6rem; }
+  .opt-card { background: #0b1526; border: 1px solid #2a3a55;
+             padding: 0.6rem 0.8rem; }
+  .opt-card.top { border-color: #7dd3fc; border-width: 2px; }
+  .opt-card .nums { color: #7dd3fc; }
+  details.evidence { margin-top: 1rem; border: 1px solid #2a3a55;
+                    background: #131f33; padding: 0.6rem 0.9rem; }
+  details.evidence summary { cursor: pointer; font-size: 1rem; }
+  #rt-hero-why { margin: 0.3rem 0; padding-left: 1.2rem; }
+  #rt-hero-why li { margin: 0.15rem 0; }
   button { font-size: 0.85rem; padding: 0.4rem 0.8rem; cursor: pointer;
            background: #1b2942; color: #f4f7fb; border: 1px solid #7dd3fc; }
   button:active { background: #274067; }
@@ -72,6 +82,12 @@ _CSS = """
     .main-grid { grid-template-columns: 1fr; }
     .stages { grid-template-columns: 1fr; }
     .kpi-strip { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (max-width: 40rem) {
+    body { font-size: 1.06rem; }
+    .note, .sub, .label, footer { font-size: 0.95rem; }
+    button, input, table { font-size: 1rem; }
+    th, td { padding: 0.45rem 0.6rem; }
   }
 """
 
@@ -110,11 +126,11 @@ function rtSetStagesBasis(snap) {
     rtStageCorridor = snap.corridor || "";
     rtStageFrom = eps.origin.name || "";
     rtStageTo = eps.dest.name || "";
-    el.textContent = "Evidence stages basis: " + snap.label +
-      " \\u2014 click each stage to run it.";
+    el.textContent = "AI analysis and evidence \\u2014 basis: " + snap.label +
+      ". Click to expand.";
   } else {
     rtStageCorridor = ""; rtStageFrom = ""; rtStageTo = "";
-    el.textContent = "Evidence stages basis: North Sea incident.";
+    el.textContent = "AI analysis and evidence \\u2014 basis: North Sea incident. Click to expand.";
   }
 }
 document.getElementById("rt-summary-btn").addEventListener("click", async () => {
@@ -352,6 +368,16 @@ function rtAskSnapshot(snap) {
       " \u00b7 saves " + second.time_saved_hours + "h" +
       " \u00b7 on-time " + second.on_time_probability +
       " \u00b7 confidence " + second.confidence;
+    const fa = snap.fastest_alternative;
+    document.getElementById("rt-hero-fastest").textContent =
+      "Fastest: " + fa.option_id + " (" + fa.total_hours + "h total)";
+    const why = document.getElementById("rt-hero-why");
+    why.textContent = "";
+    snap.top_reasons.forEach(r => {
+      const li = document.createElement("li");
+      li.textContent = r;
+      why.appendChild(li);
+    });
     const costGap = run.cost_usd - top.cost_usd;
     const timeGap = top.time_saved_hours - run.time_saved_hours;
     document.getElementById("rt-tradeoff").textContent =
@@ -362,17 +388,22 @@ function rtAskSnapshot(snap) {
     document.getElementById("rt-kpi-cost").textContent = "$" + top.cost_usd;
     document.getElementById("rt-kpi-saved").textContent = top.time_saved_hours + "h";
     document.getElementById("rt-kpi-otp").textContent = top.on_time_probability;
-    const body = document.getElementById("rt-comp-body");
-    body.textContent = "";
+    const list = document.getElementById("rt-comp-list");
+    list.textContent = "";
     snap.ranked_options.forEach(o => {
-      const tr = document.createElement("tr");
-      [o.rank, o.option_id, o.score, "$" + o.cost_usd,
-       o.time_saved_hours + "h", o.on_time_probability, o.confidence].forEach(v => {
-        const td = document.createElement("td");
-        td.textContent = v;
-        tr.appendChild(td);
-      });
-      body.appendChild(tr);
+      const card = document.createElement("div");
+      card.className = "opt-card" + (o.rank === 1 ? " top" : "");
+      const head = document.createElement("strong");
+      head.textContent = "#" + o.rank + " " + o.option_id;
+      card.appendChild(head);
+      card.appendChild(document.createTextNode(" \\u2014 " + o.title));
+      const nums = document.createElement("div");
+      nums.className = "nums";
+      nums.textContent = "score " + o.score + " \\u00b7 $" + o.cost_usd +
+        " \\u00b7 saves " + o.time_saved_hours + "h \\u00b7 on-time " +
+        o.on_time_probability + " \\u00b7 confidence " + o.confidence;
+      card.appendChild(nums);
+      list.appendChild(card);
     });
     const fills = {"disrupted": "#ff6b6b", "degraded": "#f5b942", "available": "#4ade80"};
     snap.findings.forEach(f => {
@@ -461,13 +492,17 @@ def render_routes_page(demo: dict) -> str:
     ranked = demo["ranked_options"]
     top = ranked[0]
     second = ranked[1]
-    rows = "".join(
-        f'<tr class="{"top" if o["rank"] == 1 else ""}"><td>{o["rank"]}</td>'
-        f'<td>{o["option_id"]}</td><td>{o["score"]}</td>'
-        f'<td>${o["cost_usd"]}</td><td>{o["time_saved_hours"]}h</td>'
-        f'<td>{o["on_time_probability"]}</td><td>{o["confidence"]}</td></tr>'
+    fastest = demo["fastest_alternative"]
+    cards = "".join(
+        f'<div class="opt-card{" top" if o["rank"] == 1 else ""}">'
+        f'<strong>#{o["rank"]} {o["option_id"]}</strong> &mdash; {o["title"]}'
+        f'<div class="nums">score {o["score"]} &middot; ${o["cost_usd"]} '
+        f'&middot; saves {o["time_saved_hours"]}h '
+        f'&middot; on-time {o["on_time_probability"]} '
+        f'&middot; confidence {o["confidence"]}</div></div>'
         for o in ranked
     )
+    reasons = "".join(f"<li>{r}</li>" for r in demo["top_reasons"])
     sea = next(f for f in demo["findings"] if f["mode"] == "sea")
     return (
         "<!DOCTYPE html>\n"
@@ -491,6 +526,12 @@ def render_routes_page(demo: dict) -> str:
         f'&middot; saves {top["time_saved_hours"]}h '
         f'&middot; on-time {top["on_time_probability"]} '
         f'&middot; confidence {top["confidence"]}</p>\n'
+        f'<p id="rt-hero-fastest">Fastest: {fastest["option_id"]} '
+        f'({fastest["total_hours"]}h total)</p>\n'
+        "<p>Why it wins:</p>\n"
+        '<ul id="rt-hero-why">\n'
+        + reasons
+        + "</ul>\n"
         f'<h2 id="rt-hero-second">Runner-up: {second["option_id"]} &mdash; {second["title"]}</h2>\n'
         f'<p class="nums" id="rt-hero-second-nums">Score {second["score"]} &middot; ${second["cost_usd"]} '
         f'&middot; saves {second["time_saved_hours"]}h '
@@ -507,23 +548,23 @@ def render_routes_page(demo: dict) -> str:
         '<p><button id="rt-live-values-btn" type="button">Refresh live values</button>\n'
         '<span id="rt-live-values-note" class="note">Loading live values…</span></p>\n'
         '<div class="main-grid">\n'
-        '<div class="panel">\n<h2>Route comparison</h2>\n<table>\n'
-        "<tr><th>#</th><th>Option</th><th>Score</th><th>Cost</th>"
-        "<th>Saved</th><th>On-time</th><th>Conf.</th></tr>\n"
-        '<tbody id="rt-comp-body">\n'
-        + rows
-        + "</tbody>\n</table>\n"
-        "<h2>Schematic (not a map)</h2>\n"
-        + _schematic(demo["findings"])
+        '<div class="panel">\n<h2>Route comparison</h2>\n'
+        '<div class="opt-cards" id="rt-comp-list">\n'
+        + cards
+        + "</div>\n"
         + "</div>\n"
         '<div class="panel">\n<h2>Operations brief</h2>\n'
         f'<p id="rt-brief" class="note">[deterministic] {spark_client.deterministic_summary(ranked)}</p>\n'
         '<button id="rt-summary-btn" type="button">Refresh live (Spark)</button>\n'
         "</div>\n"
         "</div>\n"
-        '<p id="rt-stages-basis" class="note">'
-        "Evidence stages basis: North Sea incident.</p>\n"
-        '<div class="stages">\n'
+        '<details class="evidence">\n'
+        '<summary id="rt-stages-basis">'
+        "AI analysis and evidence &mdash; basis: North Sea incident. "
+        "Click to expand.</summary>\n"
+        "<h2>Schematic (not a map)</h2>\n"
+        + _schematic(demo["findings"])
+        + '<div class="stages">\n'
         '<div class="stage-col">\n'
         '<div class="panel">\n<h2>Evidence &mdash; SAM 3.1</h2>\n'
         '<p class="note">Reference imagery, not a live feed. '
@@ -562,6 +603,7 @@ def render_routes_page(demo: dict) -> str:
         "</div>\n"
         "</div>\n"
         "</div>\n"
+        "</details>\n"
         "<footer>\n<p>Sources: deterministic scoring (always) &middot; brief "
         "summary (Spark live, deterministic offline) &middot; SAM 3.1 "
         "segmentation (live, unavailable offline) &middot; Wonder assumptions "
@@ -569,6 +611,6 @@ def render_routes_page(demo: dict) -> str:
         "setup-required, or mock) &middot; Muse Image illustration. "
         "Costs and probabilities are modeled estimates; legs measured with "
         "provenance.</p>\n</footer>\n" + _SCRIPT
-        + ask_box.render_ask_script("rt")
+        + ask_box.render_ask_script("rt", extra=" + rtStageQuery(true)")
         + "</body>\n</html>\n"
     )
