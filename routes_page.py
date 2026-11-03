@@ -360,7 +360,10 @@ function rtAskSnapshot(snap) {
       " \u00b7 saves " + top.time_saved_hours + "h" +
       " \u00b7 on-time " + top.on_time_probability +
       " \u00b7 confidence " + top.confidence;
-    const second = snap.ranked_options[1];
+    const second = snap.ranked_options[1] || {option_id: "none",
+      title: "only one relevant mode", score: "n/a", cost_usd: "n/a",
+      time_saved_hours: "n/a", on_time_probability: "n/a",
+      confidence: "n/a"};
     document.getElementById("rt-hero-second").textContent =
       "Runner-up: " + second.option_id + " \u2014 " + second.title;
     document.getElementById("rt-hero-second-nums").textContent =
@@ -378,12 +381,13 @@ function rtAskSnapshot(snap) {
       li.textContent = r;
       why.appendChild(li);
     });
-    const costGap = run.cost_usd - top.cost_usd;
-    const timeGap = top.time_saved_hours - run.time_saved_hours;
-    document.getElementById("rt-tradeoff").textContent =
-      "Tradeoff vs " + run.option_id + ": top pick " +
+    const costGap = run ? run.cost_usd - top.cost_usd : 0;
+    const timeGap = run ? top.time_saved_hours - run.time_saved_hours : 0;
+    document.getElementById("rt-tradeoff").textContent = run ?
+      ("Tradeoff vs " + run.option_id + ": top pick " +
       (costGap >= 0 ? "saves $" + costGap : "costs $" + (-costGap) + " more") +
-      " and " + (timeGap >= 0 ? "saves " + timeGap + "h more" : "saves " + (-timeGap) + "h less") + ".";
+      " and " + (timeGap >= 0 ? "saves " + timeGap + "h more" : "saves " + (-timeGap) + "h less") + ".") :
+      "Only one relevant mode on this corridor; nothing to trade off.";
     document.getElementById("rt-kpi-score").textContent = top.score;
     document.getElementById("rt-kpi-cost").textContent = "$" + top.cost_usd;
     document.getElementById("rt-kpi-saved").textContent = top.time_saved_hours + "h";

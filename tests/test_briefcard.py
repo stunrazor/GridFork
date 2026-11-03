@@ -64,6 +64,12 @@ def test_card_is_dated_with_alternatives_and_fastest():
     assert "fastest_alternative" in script
 
 
+def test_card_handles_single_relevant_mode():
+    script = _card().split("<script>", 1)[1]
+    assert "only one relevant mode" in script
+    assert "nothing to trade off" in script
+
+
 def test_card_lists_sources_assumptions_and_labels():
     html = _card()
     assert "Evidence sources" in html

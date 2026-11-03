@@ -49,9 +49,11 @@ quantified reroutes on Cost, Time Saved, On-Time Probability, and Confidence.
 - Worldwide snapshots: `GET /snapshot` ranks all four modes live for any
   corridor — six presets from the North Sea to the transpacific, or any
   two geocoded places. Same delay rules, agents, and scoring as the
-  baseline; legs that cannot apply (open-ocean road/rail) are excluded with
-  a reason instead of a silent guess. The Storm Lab runs these on click,
-  and its Ask box grounds in the selected corridor.
+  baseline; legs that cannot apply are excluded with a reason instead of
+  a silent guess: open-ocean road/rail, rail with proven no-coverage,
+  sea under 200 km. A failed rail lookup keeps an estimated leg rather
+  than dropping it. The Storm Lab runs these on click, and its Ask box
+  grounds in the selected corridor.
 
 ## Endpoints
 

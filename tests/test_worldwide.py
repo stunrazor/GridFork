@@ -155,7 +155,10 @@ def _patch_offline(monkeypatch):
             "observed_at": None,
         },
     )
-    monkeypatch.setattr(geo, "nearest_entur_stop", lambda lat, lon, timeout=10.0: None)
+    def lookup_down(lat, lon, timeout=10.0):
+        raise httpx.ConnectError("offline: stop lookup failed")
+
+    monkeypatch.setattr(geo, "nearest_entur_stop", lookup_down)
 
 
 def test_haversine_matches_known_corridor():
@@ -369,6 +372,106 @@ def test_snapshot_short_hop_excludes_sea_and_air(monkeypatch):
     assert {o["mode"] for o in snap["ranked_options"]} == {"road", "rail"}
     assert snap["fastest_alternative"]["mode"] == "road"
     assert snap["legs"]["road"]["delay_hours"] == 0
+
+
+def test_snapshot_mid_hop_excludes_sea_but_keeps_air(monkeypatch):
+    _patch_live_layers(monkeypatch)
+    snap = snapshot_mod.build_snapshot(
+        {"name": "North", "lat": 14.65, "lon": 121.05},
+        {"name": "South", "lat": 16.0, "lon": 121.05},
+        "North → South",
+    )
+    assert 100 < snap["distance_km"] < 200
+    assert snap["legs"]["sea"]["applicable"] is False
+    assert snap["legs"]["air"]["applicable"] is True
+    assert "sea-leg" not in {o["option_id"] for o in snap["ranked_options"]}
+
+
+def test_rail_without_coverage_left_out_of_ranking(monkeypatch):
+    _patch_live_layers(monkeypatch)
+    monkeypatch.setattr(
+        geo, "nearest_entur_stop", lambda lat, lon, timeout=10.0: None
+    )
+    snap = snapshot_mod.build_snapshot(
+        {"name": "Bulacan", "lat": 14.8, "lon": 120.9},
+        {"name": "Batangas", "lat": 13.76, "lon": 121.06},
+        "Bulacan → Batangas",
+    )
+    assert 100 < snap["distance_km"] < 200
+    assert snap["legs"]["rail"]["applicable"] is False
+    assert "No rail coverage" in snap["legs"]["rail"]["reason"]
+    assert {o["mode"] for o in snap["ranked_options"]} == {"air", "road"}
+    totals = {
+        mode: snap["legs"][mode]["transit_hours"]
+        + snap["legs"][mode]["delay_hours"]
+        for mode in ("air", "road")
+    }
+    assert snap["fastest_alternative"]["mode"] == min(totals, key=totals.get)
+
+
+def test_rail_lookup_failure_keeps_estimated_leg(monkeypatch):
+    _patch_live_layers(monkeypatch)
+
+    def lookup_down(lat, lon, timeout=10.0):
+        raise httpx.ConnectError("lookup down")
+
+    monkeypatch.setattr(geo, "nearest_entur_stop", lookup_down)
+    snap = snapshot_mod.snapshot_for_corridor("channel")
+    assert snap["legs"]["rail"]["applicable"] is True
+    assert snap["rail"]["source"] == "coverage-unknown"
+    assert snap["provenance"]["rail"]["delay_hours"] == "estimated-default"
+
+
+def test_rail_lookup_retry_proves_no_coverage(monkeypatch):
+    _patch_live_layers(monkeypatch)
+    calls = []
+
+    def flaky(lat, lon, timeout=10.0):
+        calls.append(1)
+        if len(calls) == 1:
+            raise httpx.ConnectError("flake")
+        return None
+
+    monkeypatch.setattr(geo, "nearest_entur_stop", flaky)
+    snap = snapshot_mod.build_snapshot(
+        {"name": "Bulacan", "lat": 14.8, "lon": 120.9},
+        {"name": "Batangas", "lat": 13.76, "lon": 121.06},
+        "Bulacan → Batangas",
+    )
+    assert len(calls) == 2
+    assert snap["legs"]["rail"]["applicable"] is False
+    assert {o["mode"] for o in snap["ranked_options"]} == {"air", "road"}
+
+
+def test_channel_preset_loses_unverifiable_rail(monkeypatch):
+    _patch_live_layers(monkeypatch)
+    monkeypatch.setattr(
+        geo, "nearest_entur_stop", lambda lat, lon, timeout=10.0: None
+    )
+    snap = snapshot_mod.snapshot_for_corridor("channel")
+    assert snap["legs"]["rail"]["applicable"] is False
+    assert {o["mode"] for o in snap["ranked_options"]} == {"sea", "air", "road"}
+
+
+def test_entur_lookup_failure_raises_instead_of_none(monkeypatch):
+    def boom(*args, **kwargs):
+        raise httpx.ConnectError("entur down")
+
+    monkeypatch.setattr(httpx, "post", boom)
+    with pytest.raises(httpx.HTTPError):
+        geo.nearest_entur_stop(59.91, 10.75)
+
+
+def test_single_mode_ranking_stays_valid(monkeypatch):
+    from orchestrator import rank_corridor_modes
+
+    _patch_live_layers(monkeypatch)
+    snap = snapshot_mod.snapshot_for_corridor("north-sea")
+    scenario = snap["scenario"]
+    ranked = rank_corridor_modes(scenario["modes"], snap["label"], ["road"])
+    assert [o["option_id"] for o in ranked["ranked_options"]] == ["road-leg"]
+    assert ranked["ranked_options"][0]["rank"] == 1
+    assert ranked["fastest_alternative"]["mode"] == "road"
 
 
 def test_scale_delay_by_distance():

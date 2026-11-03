@@ -32,8 +32,8 @@ STOP_SEARCH_QUERY = """query {
 }"""
 
 # Hand-verified presets. Sea points sit in open water between the
-# endpoints; rail stops are Entur ids (None where Entur has no coverage,
-# so rail honestly reports an estimated default there). Transpacific
+# endpoints; rail stops are Entur ids (None where Entur has no coverage, so the lookup proves no-coverage and rail stays
+# out of the ranking). Transpacific
 # road/rail are inapplicable by geography (open ocean), not by outage.
 CORRIDORS = {
     "north-sea": {
@@ -208,9 +208,10 @@ def geocode(name: str, timeout: float = 10.0) -> tuple:
 def nearest_entur_stop(lat: float, lon: float, timeout: float = 10.0):
     """Nearest Entur stop to a point as (stop_id, name), or None.
 
-    None means no Entur coverage there (the rail leg then reports an
-    estimated default); network failures also yield None rather than a
-    guess, so the caller never samples the wrong station.
+    None means the lookup succeeded and no stop exists nearby: proven
+    no-coverage, and the rail leg stays out of the Recommendation.
+    Network and API failures raise instead of guessing, so a failed
+    lookup keeps rail as an estimated leg rather than dropping it.
     """
     query = STOP_SEARCH_QUERY % {
         "lat_min": lat - STOP_SEARCH_HALF_DEG,
@@ -218,17 +219,14 @@ def nearest_entur_stop(lat: float, lon: float, timeout: float = 10.0):
         "lat_max": lat + STOP_SEARCH_HALF_DEG,
         "lon_max": lon + STOP_SEARCH_HALF_DEG,
     }
-    try:
-        response = httpx.post(
-            ENTUR_URL,
-            json={"query": query},
-            headers={"ET-Client-Name": ENTUR_CLIENT_NAME},
-            timeout=timeout,
-        )
-        response.raise_for_status()
-        matches = response.json()["data"]["matches"]
-    except Exception:
-        return None
+    response = httpx.post(
+        ENTUR_URL,
+        json={"query": query},
+        headers={"ET-Client-Name": ENTUR_CLIENT_NAME},
+        timeout=timeout,
+    )
+    response.raise_for_status()
+    matches = response.json()["data"]["matches"]
     best = None
     best_km = None
     for match in matches or []:

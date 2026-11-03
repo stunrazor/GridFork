@@ -109,3 +109,9 @@ def test_hero_leads_and_kpis_follow():
     assert html.index("rt-hero-title") < html.index("rt-kpi-score")
     assert html.index("rt-kpi-otp") < html.index("rt-live-values-btn")
     assert html.index("rt-live-values-note") < html.index("Route comparison")
+
+
+def test_hero_handles_single_relevant_mode():
+    script = _page().split("<script>", 1)[1]
+    assert "only one relevant mode" in script
+    assert "nothing to trade off" in script

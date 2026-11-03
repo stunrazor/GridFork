@@ -23,7 +23,11 @@ SEA_DETOUR = 1.15
 SEA_HANDLING_HOURS = 12.0
 # Below this corridor length sea freight and flights stop being options a
 # traveler would pick; they leave the ranking with a reason instead.
-SEA_MIN_KM = 100.0
+# Sea freight needs a long-enough corridor: below this floor the slow
+# steaming plus port handling make the leg noise, never a real
+# recommendation. Free sources expose no coastline test, so short
+# island crossings stay out with short inland hops.
+SEA_MIN_KM = 200.0
 AIR_MIN_KM = 100.0
 # Rule delays assume corridor scale (~500 km of disruption exposure), so a
 # 12 km hop scales them near zero instead of inheriting a 6 h floor.
@@ -323,59 +327,76 @@ def build_snapshot(
         rail_dist = round(distance * RAIL_DETOUR, 1)
         rail_transit = round(rail_dist / RAIL_SPEED_KMH + RAIL_HANDLING_HOURS, 1)
         stop_id, stop_name = rail_stop, rail_stop_name or rail_stop
+        coverage_unknown = False
         if stop_id is None:
-            try:
-                resolved = geo.nearest_entur_stop(d[0], d[1], timeout=timeout)
-            except Exception:
-                resolved = None
+            resolved = None
+            failures = 0
+            for _ in range(2):
+                try:
+                    resolved = geo.nearest_entur_stop(d[0], d[1], timeout=timeout)
+                    break
+                except Exception:
+                    failures += 1
+            coverage_unknown = resolved is None and failures == 2
             if resolved is not None:
                 stop_id, stop_name = resolved
-        if stop_id is None:
-            rail = {"source": "no-coverage", "live": False}
-            delay, delay_prov = DEFAULT_DELAY_HOURS, "estimated-default"
-            detail = f"No Entur rail coverage near {dest['name']}"
-        else:
-            rail = live_rail.fetch_entur_disruptions(
-                timeout=timeout, stop_id=stop_id
+        if stop_id is None and not coverage_unknown:
+            legs["rail"] = _not_applicable(
+                "rail", f"No rail coverage near {dest['name']}"
             )
-            if rail["live"]:
-                delay = orchestrator._disruptions_to_rail_delay(
-                    rail["active_count"], rail["severe_count"]
-                )
-                delay_prov = "estimated-from-conditions"
-            else:
+            readouts["rail"] = {"source": "no-coverage", "live": False}
+            provenance["rail"] = {"delay_hours": "not-applicable"}
+        else:
+            if stop_id is None:
+                rail = {"source": "coverage-unknown", "live": False}
                 delay, delay_prov = DEFAULT_DELAY_HOURS, "estimated-default"
-            detail = f"Sampled departures at {stop_name}"
-        readouts["rail"] = rail
-        delay = _scale_delay(delay, distance)
-        legs["rail"] = {
-            "mode": "rail",
-            "applicable": True,
-            "live": rail["live"],
-            "delay_hours": delay,
-            "transit_hours": rail_transit,
-            "delay_provenance": delay_prov,
-            "stop_id": stop_id,
-            "stop_name": stop_name,
-            "active_count": rail.get("active_count"),
-            "severe_count": rail.get("severe_count"),
-            "detail": detail,
-        }
-        slices["rail"] = {
-            "route": route_label,
-            "transit_hours": rail_transit,
-            "delay_hours": delay,
-            "cost_usd": round(rail_dist * COST_PER_KM["rail"]),
-            "on_time_probability": _on_time(delay),
-            "confidence": _confidence(delay_prov),
-        }
-        provenance["rail"] = {
-            "active_disruptions": "measured" if rail["live"] else "unavailable",
-            "delay_hours": delay_prov,
-            "cost_usd": "estimated",
-            "on_time_probability": "estimated",
-            "confidence": "estimated",
-        }
+                detail = (
+                    f"Rail coverage unknown near {dest['name']} "
+                    "(lookup failed)"
+                )
+            else:
+                rail = live_rail.fetch_entur_disruptions(
+                    timeout=timeout, stop_id=stop_id
+                )
+                if rail["live"]:
+                    delay = orchestrator._disruptions_to_rail_delay(
+                        rail["active_count"], rail["severe_count"]
+                    )
+                    delay_prov = "estimated-from-conditions"
+                else:
+                    delay, delay_prov = DEFAULT_DELAY_HOURS, "estimated-default"
+                detail = f"Sampled departures at {stop_name}"
+        if stop_id is not None or coverage_unknown:
+            readouts["rail"] = rail
+            delay = _scale_delay(delay, distance)
+            legs["rail"] = {
+                "mode": "rail",
+                "applicable": True,
+                "live": rail["live"],
+                "delay_hours": delay,
+                "transit_hours": rail_transit,
+                "delay_provenance": delay_prov,
+                "stop_id": stop_id,
+                "stop_name": stop_name,
+                "active_count": rail.get("active_count"),
+                "severe_count": rail.get("severe_count"),
+                "detail": detail,
+            }
+            slices["rail"] = {
+                "route": route_label,
+                "transit_hours": rail_transit,
+                "delay_hours": delay,
+                "cost_usd": round(rail_dist * COST_PER_KM["rail"]),
+                "on_time_probability": _on_time(delay),
+                "confidence": _confidence(delay_prov),
+            }
+            provenance["rail"] = {
+                "active_disruptions": "measured" if rail["live"] else "unavailable",
+                "delay_hours": delay_prov,
+                "cost_usd": "estimated",
+                "on_time_probability": "estimated",
+                "confidence": "estimated",
+            }
 
     applicable = [
         mode

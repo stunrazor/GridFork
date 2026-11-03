@@ -85,18 +85,20 @@ function briefAskSnapshot(snap) {
       " · saves " + top.time_saved_hours + "h" +
       " · on-time " + top.on_time_probability +
       " · confidence " + top.confidence;
-    const costGap = run.cost_usd - top.cost_usd;
-    const timeGap = top.time_saved_hours - run.time_saved_hours;
-    document.getElementById("brief-tradeoff").textContent =
-      "Tradeoff vs " + run.option_id + ": top pick " +
+    const costGap = run ? run.cost_usd - top.cost_usd : 0;
+    const timeGap = run ? top.time_saved_hours - run.time_saved_hours : 0;
+    document.getElementById("brief-tradeoff").textContent = run ?
+      ("Tradeoff vs " + run.option_id + ": top pick " +
       (costGap >= 0 ? "saves $" + costGap : "costs $" + (-costGap) + " more") +
-      " and " + (timeGap >= 0 ? "saves " + timeGap + "h more" : "saves " + (-timeGap) + "h less") + ".";
+      " and " + (timeGap >= 0 ? "saves " + timeGap + "h more" : "saves " + (-timeGap) + "h less") + ".") :
+      "Only one relevant mode on this corridor; nothing to trade off.";
     const fa = snap.fastest_alternative;
     document.getElementById("brief-fastest").textContent =
       "Fastest: " + fa.option_id + " (" + fa.total_hours + "h total)";
-    document.getElementById("brief-alts").textContent =
-      "Alternatives, in order: " +
-      snap.ranked_options.slice(1).map(o => o.option_id).join(", ") + ".";
+    const rest = snap.ranked_options.slice(1).map(o => o.option_id);
+    document.getElementById("brief-alts").textContent = rest.length ?
+      "Alternatives, in order: " + rest.join(", ") + "." :
+      "Alternatives: none — only one relevant mode.";
     document.getElementById("brief-captured").textContent =
       "Brief captured: " + new Date().toLocaleString() + " (" + snap.label + ").";
     const src = (l) => (l && l.source) || "reference incident";
