@@ -14,6 +14,7 @@ import live_air
 import live_marine
 import live_rail
 import live_road
+import live_vessel
 import live_weather
 import openweights_client
 import sam_client
@@ -676,7 +677,7 @@ def run_ask(question: str, snapshot: dict | None = None) -> dict:
     """
     asked = validate_ask_question(question)
     if snapshot is None:
-        scenario, provenance, marine, wind, air, road, rail = _snapshot_parts()
+        scenario, provenance, marine, wind, air, road, rail, vessel = _snapshot_parts()
         findings = collect_findings(scenario)
         options = build_options(
             findings, scenario["baseline"]["storm_delay_hours_if_waiting"]
@@ -689,6 +690,7 @@ def run_ask(question: str, snapshot: dict | None = None) -> dict:
             "air": air,
             "road": road,
             "rail": rail,
+            "vessel": vessel,
         }
         fastest = fastest_alternative(scenario)
         grounded_on = scenario["label"]
@@ -702,6 +704,7 @@ def run_ask(question: str, snapshot: dict | None = None) -> dict:
             "air": snapshot["air"],
             "road": snapshot["road"],
             "rail": snapshot["rail"],
+            "vessel": snapshot.get("vessel"),
         }
         fastest = snapshot["fastest_alternative"]
         grounded_on = snapshot["label"]
@@ -1182,7 +1185,7 @@ def run_live_snapshot() -> dict:
     incident exactly, with every sea field marked estimated-fallback and
     each Phase 2 layer reporting setup-required.
     """
-    scenario, provenance, marine, wind, air, road, rail = _snapshot_parts()
+    scenario, provenance, marine, wind, air, road, rail, vessel = _snapshot_parts()
     findings = collect_findings(scenario)
     options = build_options(findings, scenario["baseline"]["storm_delay_hours_if_waiting"])
     ranked = score_options(options)
@@ -1196,6 +1199,7 @@ def run_live_snapshot() -> dict:
         "air": air,
         "road": road,
         "rail": rail,
+        "vessel": vessel,
         "provenance": provenance,
         "findings": findings,
         "ranked_options": ranked,
@@ -1207,9 +1211,9 @@ def run_live_snapshot() -> dict:
 def _snapshot_parts() -> tuple:
     """Fetch and apply all live layers; shared by snapshot and ask."""
     scenario, provenance, marine, wind = build_live_scenario()
-    air, road, rail = fetch_phase2_layers()
-    apply_phase2_layers(scenario, provenance, air, road, rail)
-    return scenario, provenance, marine, wind, air, road, rail
+    air, road, rail, vessel = fetch_phase2_layers()
+    apply_phase2_layers(scenario, provenance, air, road, rail, vessel)
+    return scenario, provenance, marine, wind, air, road, rail, vessel
 
 
 # Phase 2 live data: measured air/road/rail conditions drive those slices
@@ -1283,17 +1287,31 @@ def _disruptions_to_rail_delay(active: int, severe: int) -> int:
     return 4
 
 
-def fetch_phase2_layers() -> tuple[dict, dict, dict]:
-    """Fetch the Phase 2 live layers: (air, road, rail) readouts."""
+def fetch_phase2_layers() -> tuple[dict, dict, dict, dict]:
+    """Fetch the Phase 2 live layers: (air, road, rail, vessel) readouts.
+
+    The vessel readout watches the North Sea off Rotterdam, matching the
+    marine point; worldwide corridors pass their own sea-point box.
+    """
     return (
         live_air.fetch_air_traffic(),
         live_road.fetch_corridor_congestion(),
         live_rail.fetch_rail_disruptions(),
+        live_vessel.fetch_vessel_traffic(
+            boxes=(
+                ("north_sea", live_vessel.point_box(52.0, 3.0, half=1.0)),
+            ),
+        ),
     )
 
 
 def apply_phase2_layers(
-    scenario: dict, provenance: dict, air: dict, road: dict, rail: dict
+    scenario: dict,
+    provenance: dict,
+    air: dict,
+    road: dict,
+    rail: dict,
+    vessel: dict | None = None,
 ) -> None:
     """Apply live Phase 2 readouts to a scenario in place.
 
@@ -1345,3 +1363,8 @@ def apply_phase2_layers(
         provenance["rail"]["active_disruptions"] = "measured"
         provenance["rail"]["severe_disruptions"] = "measured"
         provenance["rail"]["delay_hours"] = "estimated-from-conditions"
+    if vessel and vessel.get("live"):
+        # Measured context only: no validated congestion-to-delay rule,
+        # so the count never moves the sea delay.
+        scenario["modes"]["sea"]["vessels_nearby"] = vessel["vessels_total"]
+        provenance["sea"]["vessels_nearby"] = "measured"

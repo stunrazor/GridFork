@@ -13,6 +13,7 @@ import live_air
 import live_marine
 import live_rail
 import live_road
+import live_vessel
 import live_weather
 import orchestrator
 
@@ -132,6 +133,24 @@ def build_snapshot(
         else {"source": "not-applicable", "live": False, "wind_kph": 0}
     )
     readouts["marine"], readouts["wind"] = marine, wind
+    # Vessel traffic near the sea point: measured context only, never a
+    # delay input - no validated congestion-to-delay rule exists.
+    vessel = (
+        live_vessel.fetch_vessel_traffic(
+            timeout=timeout,
+            boxes=(
+                ("sea", live_vessel.point_box(sea_pt[0], sea_pt[1], half=1.0)),
+            ),
+        )
+        if not sea_short
+        else {
+            "source": "not-applicable",
+            "live": False,
+            "vessels_sea": None,
+            "vessels_total": None,
+        }
+    )
+    readouts["vessel"] = vessel
     sea_live = marine["live"] or wind["live"]
     if sea_live:
         delay, port_status = orchestrator._sea_conditions_to_delay(
@@ -155,6 +174,7 @@ def build_snapshot(
         "wind_kph": wind["wind_kph"],
         "marine_source": marine["source"],
         "wind_source": wind["source"],
+        "vessels_nearby": vessel.get("vessels_total"),
     }
     slices["sea"] = {
         "route": route_label,
@@ -166,12 +186,16 @@ def build_snapshot(
         "cost_usd": round(sea_dist * COST_PER_KM["sea"]),
         "on_time_probability": _on_time(delay),
         "confidence": _confidence(delay_prov),
+        "vessels_nearby": vessel.get("vessels_total"),
     }
     provenance["sea"] = {
         "wave_height_m": "measured" if marine["live"] else "estimated-fallback",
         "wind_kph": "measured" if wind["live"] else "estimated-fallback",
         "delay_hours": delay_prov,
         "port_status": delay_prov,
+        "vessels_nearby": (
+            "measured" if vessel["live"] else "unavailable"
+        ),
         "cost_usd": "estimated",
         "on_time_probability": "estimated",
         "confidence": "estimated",
@@ -182,6 +206,7 @@ def build_snapshot(
             "source": "not-applicable",
             "live": False,
         }
+        readouts["vessel"] = {"source": "not-applicable", "live": False}
         provenance["sea"] = {"delay_hours": "not-applicable"}
 
     # Air: traffic near both endpoints, OpenSky then keyless adsb.lol.
@@ -416,6 +441,7 @@ def build_snapshot(
         "legs": legs,
         "marine": readouts["marine"],
         "wind": readouts["wind"],
+        "vessel": readouts["vessel"],
         "air": readouts["air"],
         "road": readouts["road"],
         "rail": readouts["rail"],

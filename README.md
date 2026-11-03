@@ -42,8 +42,10 @@ quantified reroutes on Cost, Time Saved, On-Time Probability, and Confidence.
 - Phase 2 real data: the same snapshot adds air (OpenSky Network traffic,
   else keyless adsb.lol direct or via an `ADSB_BASE_URL` relay), road
   (TomTom flow ratios plus incident closures and a routed truck transit),
-  and rail (NS, DB, or keyless Entur disruption counts) legs through
-  explicit documented rules. Each keyed layer needs its own free key;
+  rail (NS, DB, or keyless Entur disruption counts), and sea-leg vessel
+  traffic (AISStream counts as measured context, never a delay input)
+  through explicit documented rules. Each keyed layer needs its own free
+  key;
   unconfigured keyed layers report `setup-required` and leave their
   values untouched.
 - Worldwide snapshots: `GET /snapshot` ranks all four modes live for any

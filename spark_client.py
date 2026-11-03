@@ -164,6 +164,12 @@ def _live_condition_lines(live: dict) -> list[str]:
         f"rail: {rail.get('active_count')} active, "
         f"{rail.get('severe_count')} severe [{rail.get('source')}]."
     )
+    vessel = live.get("vessel") or {}
+    if vessel.get("live"):
+        lines.append(
+            f"vessels: {vessel.get('vessels_total')} tracked near the sea leg "
+            f"[{vessel.get('source')}]."
+        )
     provenance = live.get("provenance", {})
     delays = ", ".join(
         f"{mode}={provenance.get(mode, {}).get('delay_hours')}"

@@ -231,6 +231,7 @@ document.getElementById("live-btn").addEventListener("click", async () => {
       "; sea " + sea.status + " +" + sea.delay_hours + "h" +
       " [waves " + snap.provenance.sea.wave_height_m +
       ", delay " + snap.provenance.sea.delay_hours + "]" +
+      (snap.vessel && snap.vessel.live ? ", " + snap.vessel.vessels_total + " vessels tracked" : "") +
       "; air " + snap.air.source +
       (snap.air.live ? " " + (snap.air.airborne_ams + snap.air.airborne_osl) + " airborne" : "") +
       "; road " + snap.road.source +
