@@ -35,19 +35,22 @@ SETUP_DETAIL = (
     "https://aisstream.io, create an API key, and set AISSTREAM_API_KEY. "
     "Vessel counts stay unavailable until then."
 )
-# AISStream throttles rapid reconnects (HTTP 429 on the handshake), and
-# every page view would otherwise open a fresh stream, so successful
-# readouts are reused briefly. Failures are never cached: recovery is
-# immediate on the next call. ``observed_at`` always says when the
-# stream was actually read.
+# AISStream allows three concurrent connections per account and throttles
+# rapid reconnects (HTTP 429 on the handshake), so one lock serializes
+# check/fetch/store: concurrent callers share a single in-flight stream
+# instead of stampeding. Successful readouts are reused briefly; other
+# failures stay uncached for immediate recovery, except 429s, which rest
+# 60 s so the throttle window can cool. ``observed_at`` always says when
+# the stream was actually read.
 _VESSEL_CACHE: dict = {}
 _VESSEL_CACHE_TTL = 120.0
-_VESSEL_CACHE_LOCK = threading.Lock()
+_VESSEL_429_TTL = 60.0
+_VESSEL_LOCK = threading.Lock()
 
 
 def clear_vessel_cache() -> None:
     """Drop cached vessel readouts (tests and key rotation)."""
-    with _VESSEL_CACHE_LOCK:
+    with _VESSEL_LOCK:
         _VESSEL_CACHE.clear()
 
 
@@ -117,12 +120,18 @@ def _parse_report(raw):
     return mmsi, lat, lon, meta.get("time_utc")
 
 
-def _failure_detail(exc: Exception) -> str:
-    """One-line failure class for a fallback readout; secret-free."""
+def _failure_status(exc: Exception):
+    """Handshake HTTP status for an exception, else None; secret-free."""
     status = getattr(getattr(exc, "response", None), "status_code", None)
     if status is None:
         # Some handshake failures carry the status directly.
         status = getattr(exc, "status_code", None)
+    return status
+
+
+def _failure_detail(exc: Exception) -> str:
+    """One-line failure class for a fallback readout; secret-free."""
+    status = _failure_status(exc)
     if status is not None:
         return f"{type(exc).__name__} {status}"
     return type(exc).__name__
@@ -156,64 +165,71 @@ def fetch_vessel_traffic(
         tuple((tag, tuple(sorted(box.items()))) for tag, box in boxes),
         duration,
     )
-    with _VESSEL_CACHE_LOCK:
-        hit = _VESSEL_CACHE.get(cache_key)
-        if hit is not None and time.monotonic() < hit[0]:
-            return dict(hit[1])
-    window = max(0.5, min(duration, timeout))
-    seen: dict = {tag: set() for tag, _ in boxes}
-    stamp = None
-    start = time.monotonic()
     try:
-        with _connect(STREAM_URL, timeout) as ws:
-            ws.send(
-                json.dumps(
-                    {
-                        "APIKey": api_key,
-                        "BoundingBoxes": _to_stream_boxes(boxes),
-                        "FilterMessageTypes": ["PositionReport"],
-                    }
-                )
-            )
-            while time.monotonic() - start < window:
-                try:
-                    raw = ws.recv(
-                        timeout=max(0.1, window - (time.monotonic() - start))
+        with _VESSEL_LOCK:
+            hit = _VESSEL_CACHE.get(cache_key)
+            if hit is not None and time.monotonic() < hit[0]:
+                return dict(hit[1])
+            window = max(0.5, min(duration, timeout))
+            seen: dict = {tag: set() for tag, _ in boxes}
+            stamp = None
+            start = time.monotonic()
+            with _connect(STREAM_URL, timeout) as ws:
+                ws.send(
+                    json.dumps(
+                        {
+                            "APIKey": api_key,
+                            "BoundingBoxes": _to_stream_boxes(boxes),
+                            "FilterMessageTypes": ["PositionReport"],
+                        }
                     )
-                except TimeoutError:
-                    break
-                parsed = _parse_report(raw)
-                if parsed is None:
-                    continue
-                mmsi, lat, lon, reported = parsed
-                for tag, box in boxes:
-                    if _in_box(lat, lon, box):
-                        seen[tag].add(mmsi)
+                )
+                while time.monotonic() - start < window:
+                    try:
+                        raw = ws.recv(
+                            timeout=max(0.1, window - (time.monotonic() - start))
+                        )
+                    except TimeoutError:
                         break
-                if reported:
-                    stamp = reported
-            counts = {f"vessels_{tag}": len(seen[tag]) for tag, _ in boxes}
-            readout = {
-                "source": "aisstream",
-                "live": True,
-                **counts,
-                "vessels_total": sum(counts.values()),
-                "window_seconds": round(time.monotonic() - start, 1),
-                "observed_at": stamp
-                or datetime.now(tz=timezone.utc).isoformat(),
-            }
-        with _VESSEL_CACHE_LOCK:
+                    parsed = _parse_report(raw)
+                    if parsed is None:
+                        continue
+                    mmsi, lat, lon, reported = parsed
+                    for tag, box in boxes:
+                        if _in_box(lat, lon, box):
+                            seen[tag].add(mmsi)
+                            break
+                    if reported:
+                        stamp = reported
+                counts = {f"vessels_{tag}": len(seen[tag]) for tag, _ in boxes}
+                readout = {
+                    "source": "aisstream",
+                    "live": True,
+                    **counts,
+                    "vessels_total": sum(counts.values()),
+                    "window_seconds": round(time.monotonic() - start, 1),
+                    "observed_at": stamp
+                    or datetime.now(tz=timezone.utc).isoformat(),
+                }
             _VESSEL_CACHE[cache_key] = (
                 time.monotonic() + _VESSEL_CACHE_TTL,
                 readout,
             )
-        return dict(readout)
+            return dict(readout)
     except Exception as exc:
-        return {
+        detail = _failure_detail(exc)
+        fallback = {
             "source": "estimated-fallback",
             "live": False,
             **blank,
             "vessels_total": None,
             "observed_at": None,
-            "detail": _failure_detail(exc),
+            "detail": detail,
         }
+        if _failure_status(exc) == 429:
+            with _VESSEL_LOCK:
+                _VESSEL_CACHE[cache_key] = (
+                    time.monotonic() + _VESSEL_429_TTL,
+                    fallback,
+                )
+        return fallback

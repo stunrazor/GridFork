@@ -455,6 +455,58 @@ def test_vessel_failure_is_not_cached(monkeypatch):
     assert len(calls) == 2
 
 
+def test_vessel_429_backs_off_briefly(monkeypatch):
+    monkeypatch.setenv("AISSTREAM_API_KEY", "unit-ais-key")
+    calls = []
+
+    def refused(*args, **kwargs):
+        calls.append(1)
+        raise InvalidStatus(SimpleNamespace(status_code=429))
+
+    monkeypatch.setattr(live_vessel, "_connect", refused)
+    first = live_vessel.fetch_vessel_traffic(boxes=(HORMUZ,))
+    second = live_vessel.fetch_vessel_traffic(boxes=(HORMUZ,))
+    assert first == second
+    assert first["detail"] == "InvalidStatus 429"
+    assert len(calls) == 1
+
+
+def test_concurrent_callers_share_one_stream(monkeypatch):
+    import threading
+
+    monkeypatch.setenv("AISSTREAM_API_KEY", "unit-ais-key")
+    entered = threading.Event()
+    release = threading.Event()
+    calls = []
+
+    class SlowWS(_FakeWS):
+        def __enter__(self):
+            calls.append(1)
+            entered.set()
+            assert release.wait(timeout=10)
+            return self
+
+    def connect(*args, **kwargs):
+        return SlowWS([_report(111, 26.5, 56.2)])
+
+    monkeypatch.setattr(live_vessel, "_connect", connect)
+    results = []
+
+    def call():
+        results.append(live_vessel.fetch_vessel_traffic(boxes=(HORMUZ,)))
+
+    first = threading.Thread(target=call)
+    first.start()
+    assert entered.wait(timeout=10)
+    second = threading.Thread(target=call)
+    second.start()
+    release.set()
+    first.join(timeout=10)
+    second.join(timeout=10)
+    assert len(calls) == 1
+    assert [r["vessels_hormuz"] for r in results] == [1, 1]
+
+
 def test_homepage_labels_each_watched_sea():
     html = render_landing()
     assert '"/vessels"' in html
