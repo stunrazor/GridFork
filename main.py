@@ -5,6 +5,7 @@ import httpx
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import HTMLResponse
 
+import live_vessel
 import live_weather
 import openweights_client
 import snapshot as snapshot_mod
@@ -176,6 +177,12 @@ def world_snapshot(
         raise HTTPException(status_code=400, detail=str(exc))
     except httpx.HTTPError as exc:
         raise HTTPException(status_code=502, detail=f"geocoding failed: {exc}")
+
+
+@app.get("/vessels")
+def vessel_traffic():
+    """Live tracked-vessel counts at the three watched chokepoints."""
+    return live_vessel.fetch_vessel_traffic()
 
 
 def _stage_snapshot(corridor: str, from_place: str, to: str):

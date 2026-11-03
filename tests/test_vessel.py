@@ -17,6 +17,8 @@ import live_road
 import live_vessel
 import live_weather
 import snapshot as snapshot_mod
+from landing_page import render_landing
+from main import vessel_traffic
 from orchestrator import apply_phase2_layers
 from spark_client import build_ask_context
 
@@ -192,6 +194,18 @@ def test_vessel_skips_malformed_frames(monkeypatch):
     assert readout["vessels_total"] == 1
 
 
+def test_vessel_handshake_status_stays_in_detail(monkeypatch):
+    monkeypatch.setenv("AISSTREAM_API_KEY", "unit-ais-key")
+
+    def refused(*args, **kwargs):
+        raise websocket.WebSocketBadStatusException("handshake %s", 401)
+
+    monkeypatch.setattr(live_vessel, "create_connection", refused)
+    readout = live_vessel.fetch_vessel_traffic(boxes=(HORMUZ,))
+    assert readout["source"] == "estimated-fallback"
+    assert readout["detail"] == "WebSocketBadStatusException 401"
+
+
 def test_vessel_failure_falls_back_labeled(monkeypatch):
     monkeypatch.setenv("AISSTREAM_API_KEY", "unit-ais-key")
 
@@ -295,3 +309,30 @@ def test_ask_grounding_includes_live_vessels():
     assert "vessels: 42 tracked near the sea leg [aisstream]." in text
     quiet = "\n".join(build_ask_context(findings, ranked, _live_block(None)))
     assert "vessels:" not in quiet
+
+
+def test_vessels_endpoint_returns_readout(monkeypatch):
+    readout = {
+        "source": "aisstream",
+        "live": True,
+        "vessels_hormuz": 30,
+        "vessels_dover": 12,
+        "vessels_suez": 8,
+        "vessels_total": 50,
+        "observed_at": STAMP,
+    }
+    monkeypatch.setattr(
+        live_vessel, "fetch_vessel_traffic", lambda **kwargs: readout
+    )
+    assert vessel_traffic() == readout
+
+
+def test_homepage_labels_each_watched_sea():
+    html = render_landing()
+    assert '"/vessels"' in html
+    for label in ("Strait of Hormuz", "English Channel", "Suez Canal"):
+        assert label in html
+    assert "(North Sea)" in html
+    assert "Sea traffic" in html
+    script = html.split("<script>", 1)[1]
+    assert "innerHTML" not in script

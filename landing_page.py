@@ -109,13 +109,35 @@ async function loadAttention() {
     const head = document.createElement("h2");
     head.textContent = "What needs attention?";
     el.appendChild(head);
+    const seaLabel = worst.mode === "sea" ? " (North Sea)" : "";
     const lines = [
       "Corridor: " + snap.label + ".",
-      "Attention: " + worst.mode + " " + worst.status +
+      "Attention: " + worst.mode + seaLabel + " " + worst.status +
         " (+" + worst.delay_hours + "h) [" + src[worst.mode] + "].",
       stamps.length ? "Data as of " + stamps[stamps.length - 1] + "." :
         "Live data pending; estimates shown."
     ];
+    try {
+      const vr = await fetch("/vessels");
+      if (vr.ok) {
+        const vessels = await vr.json();
+        const labels = {hormuz: "Strait of Hormuz",
+          dover: "English Channel", suez: "Suez Canal"};
+        if (vessels.live) {
+          ["hormuz", "dover", "suez"].forEach(tag => {
+            lines.push("Sea traffic, " + labels[tag] + ": " +
+              vessels["vessels_" + tag] + " vessels tracked [" +
+              vessels.source + "].");
+          });
+        } else if (vessels.source === "setup-required") {
+          lines.push("Sea traffic: vessel counts unavailable " +
+            "(AIS key not configured).");
+        } else {
+          lines.push("Sea traffic: vessel counts unavailable [" +
+            vessels.source + "].");
+        }
+      }
+    } catch (ignored) { /* incident lines still render */ }
     lines.forEach((t, i) => {
       const p = document.createElement("p");
       if (i > 0) p.className = "dim";

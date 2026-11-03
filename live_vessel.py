@@ -92,6 +92,9 @@ def _parse_report(raw: str):
 def _failure_detail(exc: Exception) -> str:
     """One-line failure class for a fallback readout; secret-free."""
     status = getattr(getattr(exc, "response", None), "status_code", None)
+    if status is None:
+        # websocket-client failures carry the handshake status directly.
+        status = getattr(exc, "status_code", None)
     if status is not None:
         return f"{type(exc).__name__} {status}"
     return type(exc).__name__
