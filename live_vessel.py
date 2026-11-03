@@ -12,6 +12,7 @@ so they never move the delay number.
 
 import json
 import os
+import threading
 import time
 from datetime import datetime, timezone
 
@@ -33,6 +34,20 @@ SETUP_DETAIL = (
     "https://aisstream.io, create an API key, and set AISSTREAM_API_KEY. "
     "Vessel counts stay unavailable until then."
 )
+# AISStream throttles rapid reconnects (HTTP 429 on the handshake), and
+# every page view would otherwise open a fresh stream, so successful
+# readouts are reused briefly. Failures are never cached: recovery is
+# immediate on the next call. ``observed_at`` always says when the
+# stream was actually read.
+_VESSEL_CACHE: dict = {}
+_VESSEL_CACHE_TTL = 120.0
+_VESSEL_CACHE_LOCK = threading.Lock()
+
+
+def clear_vessel_cache() -> None:
+    """Drop cached vessel readouts (tests and key rotation)."""
+    with _VESSEL_CACHE_LOCK:
+        _VESSEL_CACHE.clear()
 
 
 def point_box(lat: float, lon: float, half: float = 0.5) -> dict:
@@ -126,6 +141,14 @@ def fetch_vessel_traffic(
             "observed_at": None,
             "detail": SETUP_DETAIL,
         }
+    cache_key = (
+        tuple((tag, tuple(sorted(box.items()))) for tag, box in boxes),
+        duration,
+    )
+    with _VESSEL_CACHE_LOCK:
+        hit = _VESSEL_CACHE.get(cache_key)
+        if hit is not None and time.monotonic() < hit[0]:
+            return dict(hit[1])
     window = max(0.5, min(duration, timeout))
     seen: dict = {tag: set() for tag, _ in boxes}
     stamp = None
@@ -159,7 +182,7 @@ def fetch_vessel_traffic(
             if reported:
                 stamp = reported
         counts = {f"vessels_{tag}": len(seen[tag]) for tag, _ in boxes}
-        return {
+        readout = {
             "source": "aisstream",
             "live": True,
             **counts,
@@ -168,6 +191,12 @@ def fetch_vessel_traffic(
             "observed_at": stamp
             or datetime.now(tz=timezone.utc).isoformat(),
         }
+        with _VESSEL_CACHE_LOCK:
+            _VESSEL_CACHE[cache_key] = (
+                time.monotonic() + _VESSEL_CACHE_TTL,
+                readout,
+            )
+        return dict(readout)
     except Exception as exc:
         return {
             "source": "estimated-fallback",

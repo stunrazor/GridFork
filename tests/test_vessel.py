@@ -7,6 +7,7 @@ no key means no network call, and any stream failure stays labeled.
 
 import json
 
+import pytest
 import websocket
 
 import geo
@@ -25,6 +26,13 @@ from spark_client import build_ask_context
 STAMP = "2026-11-03T00:00:00+00:00"
 HORMUZ = ("hormuz", {"lamin": 25.8, "lomin": 55.8, "lamax": 27.0, "lomax": 56.8})
 SUEZ = ("suez", {"lamin": 29.8, "lomin": 32.2, "lamax": 31.6, "lomax": 32.7})
+
+
+@pytest.fixture(autouse=True)
+def _fresh_cache():
+    live_vessel.clear_vessel_cache()
+    yield
+    live_vessel.clear_vessel_cache()
 
 
 def _report(mmsi, lat, lon, stamp=STAMP):
@@ -352,6 +360,40 @@ def test_vessels_endpoint_returns_readout(monkeypatch):
         live_vessel, "fetch_vessel_traffic", lambda **kwargs: readout
     )
     assert vessel_traffic() == readout
+
+
+def test_vessel_reuses_readout_within_ttl(monkeypatch):
+    monkeypatch.setenv("AISSTREAM_API_KEY", "unit-ais-key")
+    calls = []
+
+    def connect(*args, **kwargs):
+        calls.append(1)
+        return _FakeWS([_report(111, 26.5, 56.2)])
+
+    monkeypatch.setattr(live_vessel, "create_connection", connect)
+    first = live_vessel.fetch_vessel_traffic(boxes=(HORMUZ,))
+    second = live_vessel.fetch_vessel_traffic(boxes=(HORMUZ,))
+    assert first == second
+    assert len(calls) == 1
+
+
+def test_vessel_failure_is_not_cached(monkeypatch):
+    monkeypatch.setenv("AISSTREAM_API_KEY", "unit-ais-key")
+    calls = []
+
+    def flaky(*args, **kwargs):
+        calls.append(1)
+        if len(calls) == 1:
+            raise ConnectionError("throttled")
+        return _FakeWS([_report(111, 26.5, 56.2)])
+
+    monkeypatch.setattr(live_vessel, "create_connection", flaky)
+    failed = live_vessel.fetch_vessel_traffic(boxes=(HORMUZ,))
+    recovered = live_vessel.fetch_vessel_traffic(boxes=(HORMUZ,))
+    assert failed["live"] is False
+    assert recovered["live"] is True
+    assert recovered["vessels_hormuz"] == 1
+    assert len(calls) == 2
 
 
 def test_homepage_labels_each_watched_sea():
