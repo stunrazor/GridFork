@@ -40,11 +40,11 @@ SETUP_DETAIL = (
 # check/fetch/store: concurrent callers share a single in-flight stream
 # instead of stampeding. Successful readouts are reused briefly; other
 # failures stay uncached for immediate recovery, except 429s, which rest
-# 60 s so the throttle window can cool. ``observed_at`` always says when
-# the stream was actually read.
+# 5 min so the throttle window can fully cool. ``observed_at`` always
+# says when the stream was actually read.
 _VESSEL_CACHE: dict = {}
 _VESSEL_CACHE_TTL = 120.0
-_VESSEL_429_TTL = 60.0
+_VESSEL_429_TTL = 300.0
 _VESSEL_LOCK = threading.Lock()
 
 
