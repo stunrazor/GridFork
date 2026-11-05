@@ -1,3 +1,10 @@
+## Meta Global AI Developer Hackathon (Oct 26 – Nov 4, 2026)
+This project was built during the hackathon. Core contributions:
+- Deterministic multi-mode scoring engine + orchestrator
+- Muse Spark / Wonder / SAM 3.1 / Voice integrations with deterministic fallbacks
+- Live snapshot + worldwide corridor support
+- Route briefing, storm lab, and shareable incident brief UIs
+
 # GridFork
 
 Multi-agent reroute engine: live traffic, weather & disruption data across
