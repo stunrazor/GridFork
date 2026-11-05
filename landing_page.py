@@ -53,9 +53,7 @@ _PAGE = """<!DOCTYPE html>
 </head>
 <body>
 <h1>GridFork</h1>
-<p class="sub">Multi-agent reroute engine: live traffic, weather &amp;
-disruption data across sea, air, road and rail, scored by cost, time
-saved and on-time odds.
+<p class="sub">Summarize disruption evidence, show what is missing, and compare estimated recovery options across sea, air, road, and rail for an operator to assess. Costs, on-time probabilities, and confidence are modeled estimates—not verified quotes, bookings, or calibrated forecasts.
 <span class="badge">LIVE DATA &middot; LABELED ESTIMATES</span></p>
 
 <div class="attention" id="attention">
@@ -87,7 +85,7 @@ Deterministic and print-friendly.</p>
 
 <footer>
 <p>Ask GridFork tops every view. All live inference runs on demand only &mdash;
-nothing calls a model on page load. Costs and probabilities stay estimates; legs measured live.</p>
+nothing calls a model on page load. Estimated options for operator assessment; legs measured live where available.</p>
 </footer>
 <script>
 async function loadAttention() {
