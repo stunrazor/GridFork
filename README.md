@@ -1,7 +1,8 @@
 ## Meta Global AI Developer Hackathon (Oct 26 – Nov 4, 2026)
 This project was built during the hackathon. Core contributions:
 - Deterministic multi-mode scoring engine + orchestrator
-- Muse Spark / Wonder / SAM 3.1 / Voice integrations with deterministic fallbacks
+- Muse Spark / Wonder / SAM 3.1 / Muse Voice Transcribe integrations with deterministic fallbacks
+- Meta Model API is the API platform used for accessing models. Muse Code is the coding agent used.
 - Live snapshot + worldwide corridor support
 - Route briefing, storm lab, and shareable incident brief UIs
 
