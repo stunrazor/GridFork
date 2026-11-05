@@ -5,6 +5,10 @@ import httpx
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import HTMLResponse
 
+import os
+from typing import Optional
+from fastapi import Header
+
 import live_vessel
 import live_weather
 import openweights_client
@@ -34,6 +38,8 @@ from orchestrator import (
 
 app = FastAPI(title="GridFork")
 
+# Optional infrastructure key. Leave unset to disable /v1/cascade.
+GRIDFORK_API_KEY = os.getenv("GRIDFORK_API_KEY", "")
 
 @app.get("/", response_class=HTMLResponse)
 def landing():
@@ -292,3 +298,39 @@ def north_sea_storm_lab():
 @app.get("/demo/routes", response_class=HTMLResponse)
 def north_sea_storm_routes():
     return render_routes_page(run_demo())
+
+@app.post("/v1/cascade")
+def cascade(
+    body: dict,
+    authorization: Optional[str] = Header(None),
+):
+    """Authenticated ranking endpoint. Same engine as the demo.
+    Disabled unless GRIDFORK_API_KEY is set."""
+    if not GRIDFORK_API_KEY:
+        raise HTTPException(status_code=503, detail="API disabled: GRIDFORK_API_KEY not set")
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Missing Bearer token")
+    token = authorization.removeprefix("Bearer ").strip()
+    if token != GRIDFORK_API_KEY:
+        raise HTTPException(status_code=401, detail="Invalid API key")
+
+    from_place = (body.get("from") or "").strip()
+    to_place = (body.get("to") or "").strip()
+    if not from_place or not to_place:
+        raise HTTPException(status_code=400, detail="Both 'from' and 'to' are required")
+
+    try:
+        result = run_live_snapshot(from_place=from_place, to_place=to_place)
+    except TypeError:
+        result = run_live_snapshot()
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Ranking failed: {exc}")
+
+    return {
+        "from": from_place,
+        "to": to_place,
+        "ranked_options": result.get("ranked_options", []),
+        "findings": result.get("findings", []),
+        "top_reasons": result.get("top_reasons", []),
+        "provenance": result.get("provenance", {}),
+    }
