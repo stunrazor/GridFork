@@ -1,3 +1,7 @@
+## Scope
+
+This ranks a limited set of options using a deterministic weighted scorer. Costs and on-time probabilities are modeled estimates and are labeled as such. Live layers (weather and others) are used where available; missing keys or unsupported legs stay estimated or are excluded with a reason. It is decision-support for disruption assessment, not a booking system or full network optimizer.
+
 ## Meta Global AI Developer Hackathon (Oct 26 – Nov 4, 2026)
 This project was built during the hackathon. Core contributions:
 - Deterministic multi-mode scoring engine + orchestrator
