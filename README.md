@@ -87,6 +87,17 @@ quantified reroutes on Cost, Time Saved, On-Time Probability, and Confidence.
 - `POST /demo/north-sea-storm/transcribe` — Muse Voice Transcribe for one base64 WAV clip (`{"audio_b64", "filename"}`)
 - `GET /demo/routes` — route briefing: hero verdict with fastest-vs-best and win reasons, KPI strip, comparison cards, side brief, collapsible AI analysis and evidence (schematic plus stages)
 
+## Infrastructure API
+
+`POST /v1/cascade`  
+Requires header `Authorization: Bearer <key>` and JSON body:
+
+```json
+{
+  "from": "Rotterdam",
+  "to": "Oslo"
+}
+
 ## Run Live Demo
 
 **[gridfork.onrender.com](https://gridfork.onrender.com)**  
