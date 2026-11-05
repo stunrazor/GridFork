@@ -90,13 +90,12 @@ quantified reroutes on Cost, Time Saved, On-Time Probability, and Confidence.
 ## Infrastructure API
 
 `POST /v1/cascade`  
-Requires header `Authorization: Bearer <key>` and JSON body:
+Requires header `Authorization: Bearer <key>` and a JSON body with `from` and `to` fields (example: Rotterdam to Oslo).
 
-```json
-{
-  "from": "Rotterdam",
-  "to": "Oslo"
-}
+Returns the same ranking schema as the demo (`ranked_options`, `findings`, `top_reasons`, `provenance`).
+
+Disabled unless `GRIDFORK_API_KEY` is set in the environment.  
+The public demo routes do not require this key.
 
 ## Run Live Demo
 
