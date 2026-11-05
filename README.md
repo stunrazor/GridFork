@@ -89,6 +89,13 @@ quantified reroutes on Cost, Time Saved, On-Time Probability, and Confidence.
 
 ## Run it
 
+## Live demo
+
+**[gridfork.onrender.com](https://gridfork.onrender.com)**  
+Direct link: [https://gridfork.onrender.com/demo/grid](https://gridfork.onrender.com/demo/grid)
+
+## Run it locally
+
 ```powershell
 cd GridFork
 .\.venv\Scripts\python.exe -m uvicorn main:app --port 8000
