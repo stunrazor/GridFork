@@ -170,3 +170,13 @@ endpoint still works on deterministic fallbacks. Tests run offline:
 ## Demo video
 
 See `demo_video_script.md` for the 3-minute Indie Track script.
+
+
+## License
+
+This project is licensed under the GNU Affero General Public License v3.0 —
+see `LICENSE`.
+
+**Commercial licensing:** if AGPL-3.0 terms don't fit your use (for example,
+proprietary deployment without source disclosure), contact
+`stunrazor@gmail.com` for a paid commercial license.
