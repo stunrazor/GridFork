@@ -35,11 +35,16 @@ from orchestrator import (
     run_whatif,
     validate_ask_question,
 )
+from license_gate import enforce_license, license_status
 
 app = FastAPI(title="GridFork")
 
 # Optional infrastructure key. Leave unset to disable /v1/cascade.
 GRIDFORK_API_KEY = os.getenv("GRIDFORK_API_KEY", "")
+
+# BSL production gate: refuses to boot when GRIDFORK_ENV=production without
+# a valid paid license key. Evaluation/dev/test run free, key or not.
+enforce_license()
 
 @app.get("/", response_class=HTMLResponse)
 def landing():
@@ -49,6 +54,11 @@ def landing():
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
+@app.get("/license/status")
+def license_status_endpoint():
+    # Public license mode + build canary. Never exposes secrets.
+    return license_status()
 
 
 @app.get("/demo/north-sea-storm")

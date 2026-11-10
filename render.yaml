@@ -22,3 +22,9 @@ services:
         sync: false
       - key: GLIMMER_MODEL_NAME
         sync: false
+      - key: GRIDFORK_ENV
+        value: evaluation
+      - key: GRIDFORK_LICENSE_KEY
+        sync: false
+      - key: GRIDFORK_LICENSE_SECRET
+        sync: false
