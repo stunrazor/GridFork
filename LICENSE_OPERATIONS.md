@@ -58,9 +58,9 @@ production use (nothing indexed, nothing to alert on).
    `"GF-CANARY-edd38bf08e448991e83549147420714b"`
 3. **Show options**: How often → **As-it-happens**; Sources → **Automatic**;
    Language → English; Region → Any Region; How many → **All results**;
-   Deliver to → your Gmail.
-4. **Create Alert.** Send yourself a test: the string will eventually index
-   from this repo itself — expect one baseline hit and ignore it.
+   Deliver to → `stunrazor@gmail.com`.
+4. **Create Alert.** The string will eventually index from this repo itself —
+   expect one baseline hit at that address and ignore it.
 
 When an alert fires on an unfamiliar URL: open it, confirm it is your code or
 output, screenshot with date, then enforce (takedown request or license
