@@ -9,6 +9,7 @@ import os
 from typing import Optional
 from fastapi import Header
 
+import flipwatch
 import live_vessel
 import live_weather
 import openweights_client
@@ -112,6 +113,38 @@ def north_sea_storm_live():
 @app.get("/demo/north-sea-storm/brief")
 def north_sea_storm_brief():
     return run_demo_with_brief()
+
+
+@app.get("/demo/north-sea-storm/flip")
+def north_sea_storm_flip(live: bool = False):
+    """Flip-point analysis: the boundary beside the rank-1 pick.
+
+    Baseline is pure; ``live=true`` runs the same computation over the
+    current live snapshot, so the verdict reflects what the feeds say.
+    """
+    return flipwatch.incident_flip(live=live)
+
+
+@app.post("/demo/north-sea-storm/watches")
+def create_flip_watch(payload: dict | None = None):
+    """Pin a watch on the current live snapshot's flip thresholds."""
+    label = str((payload or {}).get("label") or "live flip watch")[:120]
+    return flipwatch.create_watch_live(label)
+
+
+@app.get("/demo/north-sea-storm/watches")
+def list_flip_watches():
+    """List watches. Demo-grade: watches never survive a restart."""
+    return {"watches": flipwatch.list_watches(), "persistent": False}
+
+
+@app.post("/demo/north-sea-storm/watches/{watch_id}/check")
+def check_flip_watch(watch_id: str):
+    """Re-fetch live delays and re-check one watch against them."""
+    watch = flipwatch.check_watch_live(watch_id)
+    if watch is None:
+        raise HTTPException(status_code=404, detail="unknown watch id")
+    return watch
 
 
 @app.get("/demo/north-sea-storm/image")

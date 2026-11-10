@@ -111,6 +111,17 @@ field. Loads live on open; the button flips back to the baseline.</p>
 <button id="live-btn" type="button">Switch live/baseline view</button>
 <p id="live" class="note">Loading live values…</p>
 
+<h2>Flip watch</h2>
+<p class="note">Same inputs, same ranking is reproducibility, not correctness.
+This reads the boundary beside the current pick: which estimate the pick
+rests on, and how far each input can move before the runner-up wins. A
+watch pins those boundaries and re-checks them against fresh live delays.
+Watches live in server memory and never survive a restart.</p>
+<button id="flip-btn" type="button">Show the boundary beside the pick</button>
+<button id="watch-btn" type="button">Start a live watch</button>
+<button id="recheck-btn" type="button">Re-check the watch</button>
+<div id="flip-watch"><p class="note">Not run yet.</p></div>
+
 <details class="evidence">
 <summary>AI analysis and evidence (optional)</summary>
 <p class="note">On-demand extras. Nothing here runs on page load. The Wonder
@@ -146,6 +157,13 @@ route briefing.</p>
 <script>
 async function getJSON(path) {
   const r = await fetch(path);
+  if (!r.ok) throw new Error(path + " -> " + r.status);
+  return r.json();
+}
+async function postJSON(path, data) {
+  const r = await fetch(path, {method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify(data || {})});
   if (!r.ok) throw new Error(path + " -> " + r.status);
   return r.json();
 }
@@ -283,6 +301,88 @@ document.getElementById("ow-ask-spark-btn").addEventListener("click",
   () => askRunner("spark-open", "ow-ask-spark"));
 document.getElementById("ow-ask-glimmer-btn").addEventListener("click",
   () => askRunner("glimmer", "ow-ask-glimmer"));
+function flipLine(f) {
+  const field = f.field.replace(/_/g, " ");
+  const delta = (f.flip_delta >= 0 ? "+" : "") + f.flip_delta;
+  if (f.field === "delay_hours")
+    return f.mode + " delay " + delta + "h (" + f.start_value + "h to " +
+      f.flip_value + "h) flips the pick to " + f.new_top_id;
+  if (f.field === "cost_usd")
+    return f.mode + " cost " + delta + " ($" + f.start_value + " to $" +
+      f.flip_value + ") flips the pick to " + f.new_top_id;
+  return f.mode + " " + field + " " + delta + " (" + f.start_value + " to " +
+    f.flip_value + ") flips the pick to " + f.new_top_id;
+}
+function clearBox(box) {
+  while (box.firstChild) box.removeChild(box.firstChild);
+}
+function addPara(box, text, cls) {
+  const p = document.createElement("p");
+  if (cls) p.className = cls;
+  p.textContent = text;
+  box.appendChild(p);
+}
+document.getElementById("flip-btn").addEventListener("click", async () => {
+  const box = document.getElementById("flip-watch");
+  box.textContent = "Computing the boundary\u2026";
+  try {
+    const body = await getJSON("/demo/north-sea-storm/flip?live=true");
+    clearBox(box);
+    addPara(box, body.flip.verdict);
+    const ul = document.createElement("ul");
+    body.flip.flip_points.forEach(f => {
+      const li = document.createElement("li");
+      li.textContent = flipLine(f) +
+        (f.field === "delay_hours" ? " [live-watched]" : " [static estimate]");
+      ul.appendChild(li);
+    });
+    box.appendChild(ul);
+    addPara(box, body.flip.held_without_flip.length +
+      " probe ranges held with no flip.", "note");
+  } catch (e) { box.textContent = String(e); }
+});
+let watchId = null;
+function renderWatch(box, watch) {
+  clearBox(box);
+  addPara(box, watch.watch_id + " (" + watch.label + "): " +
+    watch.last_status + " after " + watch.checks + " checks. " +
+    watch.verdict);
+  const ul = document.createElement("ul");
+  watch.thresholds.forEach(t => {
+    const li = document.createElement("li");
+    li.textContent = t.mode + " " + t.field.replace(/_/g, " ") + ": " +
+      t.status + " (flip at " + t.flip_value + ", now " +
+      (t.observed === null || t.observed === undefined ? "n/a" : t.observed) +
+      ", flips to " + t.new_top_id + ")" +
+      (t.live ? "" : " [static estimate]");
+    ul.appendChild(li);
+  });
+  box.appendChild(ul);
+}
+document.getElementById("watch-btn").addEventListener("click", async () => {
+  const box = document.getElementById("flip-watch");
+  box.textContent = "Pinning a watch on the live snapshot\u2026";
+  try {
+    const watch = await postJSON("/demo/north-sea-storm/watches",
+      {label: "grid flip watch"});
+    watchId = watch.watch_id;
+    const checked = await postJSON(
+      "/demo/north-sea-storm/watches/" + watchId + "/check", {});
+    renderWatch(box, checked);
+  } catch (e) { box.textContent = String(e); }
+});
+document.getElementById("recheck-btn").addEventListener("click", async () => {
+  const box = document.getElementById("flip-watch");
+  if (!watchId) {
+    box.textContent = "Start a watch first.";
+    return;
+  }
+  box.textContent = "Re-checking against fresh live delays\u2026";
+  try {
+    renderWatch(box, await postJSON(
+      "/demo/north-sea-storm/watches/" + watchId + "/check", {}));
+  } catch (e) { box.textContent = String(e); }
+});
 loadDemo().catch(e => { document.getElementById("modes").textContent = String(e); });
 loadSummary();
 </script>

@@ -72,7 +72,7 @@ quantified reroutes on Cost, Time Saved, On-Time Probability, and Confidence.
 
 - `GET /` — home: live attention panel (corridor, worst disruption, freshness), one primary briefing button, shortcuts to the other views
 - `GET /health`
-- `GET /demo/grid` — live grid: four labeled mode cards, ranked cards, live/baseline view, collapsible AI analysis and evidence
+- `GET /demo/grid` — live grid: four labeled mode cards, ranked cards, live/baseline view, flip watch, collapsible AI analysis and evidence
 - `GET /demo/north-sea-storm` — findings plus ranked options (JSON)
 - `GET /demo/north-sea-storm/summary` — plus Spark narrative rationale (`?corridor=` / `?from=&to=` for an asked corridor)
 - `GET /demo/north-sea-storm/vision` — plus SAM ground truth (`?image_url=`, `?corridor=` / `?from=&to=`)
@@ -89,6 +89,8 @@ quantified reroutes on Cost, Time Saved, On-Time Probability, and Confidence.
 - `GET /demo/storm-lab` — Scenario lab: worldwide snapshot runner (presets or custom places, Ask grounded in the corridor) plus a single-assumption what-if with observed/hypothetical before/after; free-form stages live in the route briefing
 - `POST /demo/north-sea-storm/transcribe` — Muse Voice Transcribe for one base64 WAV clip (`{"audio_b64", "filename"}`)
 - `GET /demo/routes` — route briefing: hero verdict with fastest-vs-best and win reasons, KPI strip, comparison cards, side brief, collapsible AI analysis and evidence (schematic plus stages)
+- `GET /demo/north-sea-storm/flip` — flip-point analysis: the verdict sentence (what the pick's edge rests on), every input boundary where the runner-up wins, and every probe range that held (`?live=true` runs it over the current live snapshot)
+- `POST /demo/north-sea-storm/watches` — pin a watch on the live snapshot's flip thresholds (`{"label"}`); `GET .../watches` lists them; `POST .../watches/{id}/check` re-fetches live delays and reports holding / near / flipped. Demo-grade: watches live in server memory and never survive a restart
 
 ## Infrastructure API
 
