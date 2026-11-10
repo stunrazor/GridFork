@@ -173,9 +173,7 @@ See `demo_video_script.md` for the 3-minute demo script.
 
 ## License
 
-This project is licensed under the GNU Affero General Public License v3.0 —
-see `LICENSE`.
-
-**Commercial licensing:** if AGPL-3.0 terms don't fit your use (for example,
-proprietary deployment without source disclosure), contact
-`stunrazor@gmail.com` for a paid commercial license.
+GridFork is licensed under the Business Source License 1.1 - see `LICENSE`.
+Non-production use (development, testing, evaluation) is free. Production
+use requires a paid commercial license: contact `stunrazor@gmail.com`.
+On 2029-11-10 the code converts to AGPL-3.0.
