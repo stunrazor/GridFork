@@ -1,7 +1,5 @@
-# GridFork demo video script (165 seconds, Indie Track)
+# GridFork demo video script (165 seconds)
 
-Target: Meta Global AI Developer Hackathon, submit by Nov 4, 9:00 PM ET.
-Judged on creativity, technical ambition, and whether it works.
 Setup: production `https://gridfork.onrender.com`, pre-warmed (checklist
 below). Record screen plus voiceover. Pace ~150 words/min; narration
 runs about 410 words across exactly 2:45. Every claim below is
@@ -92,6 +90,6 @@ Show: end card with the repo URL plus `/snapshot`, `/vessels`, `/ask`.
   on mic, never quotes.
 - Banned words anywhere: dashboard, command center, control tower,
   console. (The 0:00 line contrasts "four dashboards" — cut that
-  sentence if the judges read it literally.)
+  sentence if viewers read it literally.)
 - Mic is optional; if shown, hold 3 seconds, release, then click Ask.
 - Keep agent reasoning visible; do not add UI features before recording.
